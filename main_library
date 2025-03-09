@@ -8,21 +8,34 @@
                         Parent = keybindFrame,
                     })
                     
+                    -- Use a local variable to hold this keybind's current key.
+                    local boundKey = key or Enum.KeyCode.Unknown
+                    local inputListener
+
                     btn.MouseButton1Click:Connect(function()
                         label.Text = text .. " [ ... ]"
-                        local input = UserInputService.InputBegan:Wait()
-                        key = input.KeyCode
-                        label.Text = text .. " [" .. key.Name .. "]"
-                        if callback then
-                            callback(key)
-                        end
+                        
+                        -- Set up a one-time listener to capture the key press.
+                        local tempConn
+                        tempConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                            if gameProcessed then return end
+                            if input.UserInputType == Enum.UserInputType.Keyboard then
+                                boundKey = input.KeyCode
+                                label.Text = text .. " [" .. boundKey.Name .. "]"
+                                if callback then
+                                    callback(boundKey)
+                                end
+                                tempConn:Disconnect()
+                            end
+                        end)
                     end)
                     
-                    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                    -- Create a persistent connection that triggers the keybind's callback.
+                    inputListener = UserInputService.InputBegan:Connect(function(input, gameProcessed)
                         if gameProcessed then return end
-                        if input.KeyCode == key then
+                        if boundKey ~= Enum.KeyCode.Unknown and input.KeyCode == boundKey then
                             if callback then
-                                callback(key)
+                                callback(boundKey)
                             end
                         end
                     end)
