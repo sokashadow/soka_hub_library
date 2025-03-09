@@ -5,19 +5,14 @@
 	------------------
 
 	This is a basic UI library for Roblox that creates a draggable window with tabs and sections.
-
 	You can add elements (toggles, sliders, buttons, and keybinds) to sections.
 
 	Usage:
 
 		local Library = loadstring(game:HttpGet("https://yourdomain.com/SokaHubUI.lua"))()
-
 		local Window = Library:CreateWindow("Soka Hub", "DarkTheme")
-
 		local MainTab = Window:CreateTab("Main")
-
 		local SpeedSection = MainTab:CreateSection("Speed")
-
 		SpeedSection:NewToggle("Speed Toggle", "Toggle speed", function(state)
 			print("Speed state", state)
 		end)
@@ -81,7 +76,7 @@ local Window = {}
 Window.__index = Window
 
 function Window:CreateTab(name)
-	-- Create a container for this tab
+	-- Create a container for this tab's content
 	local container = Create("Frame", {
 		Size = UDim2.new(1, 0, 1, 0),
 		BackgroundTransparency = 1,
@@ -118,18 +113,18 @@ function Window:CreateTab(name)
 					Parent = sectionFrame,
 				})
 				
-				-- Handy layout for the new elements added to the section:
+				-- Layout for the added elements:
 				local layout = Create("UIListLayout", {
 					SortOrder = Enum.SortOrder.LayoutOrder,
 					Parent = sectionFrame,
 				})
-				-- Keeping track of added elements (optional).
+				-- Tracking for added elements (optional)
 				local section = {
 					Frame = sectionFrame,
 					Elements = {},
 				}
 				
-				-- Methods to add UI elements to the Section:
+				-- Methods to add UI elements to the section:
 				function section:NewToggle(text, desc, callback)
 					local toggle = {}
 					toggle.State = false
@@ -323,7 +318,7 @@ end
 ----------------------------------------------------------------
 
 function SokaHubUI:CreateWindow(title, theme)
-	-- Create main ScreenGui and Window Frame; use PlayerGui instead of CoreGui for compatibility
+	-- Create main ScreenGui and Window Frame; use PlayerGui for compatibility
 	local ScreenGui = Create("ScreenGui", {
 		Name = "SokaHubUI",
 		Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
@@ -356,11 +351,20 @@ function SokaHubUI:CreateWindow(title, theme)
 		Parent = MainFrame,
 		Position = UDim2.new(0, 0, 0, 30)
 	})
+	-- Add a layout so all tab buttons are visible
+	local tabListLayout = Create("UIListLayout", {
+		Parent = TabHolder,
+		FillDirection = Enum.FillDirection.Horizontal,
+		HorizontalAlignment = Enum.HorizontalAlignment.Left,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+		Padding = UDim.new(0,5),
+	})
 	
 	-- Content holder for tab contents (sections)
 	local ContentHolder = Create("Frame", {
 		Size = UDim2.new(1, 0, 1, -70),
-		BackgroundColor3 = Color3.fromRGB(25,25,25),
+		BackgroundColor3 = Color3.from
+	BackgroundColor3 = Color3.fromRGB(25,25,25),
 		BorderSizePixel = 0,
 		Parent = MainFrame,
 		Position = UDim2.new(0, 0, 0, 70)
