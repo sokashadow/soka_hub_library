@@ -1,400 +1,313 @@
--- SokaHub UI Library
-------------------
--- This is a basic UI library for Roblox that creates a draggable window with tabs and sections.
--- You can add elements (toggles, sliders, buttons, and keybinds) to sections.
---
--- Usage:
---   local Library = loadstring(game:HttpGet("https://yourdomain.com/SokaHubUI.lua"))()
---   local Window = Library:CreateWindow("Soka Hub", "DarkTheme")
---   local MainTab = Window:CreateTab("Main")
---   local SpeedSection = MainTab:CreateSection("Speed")
---   SpeedSection:NewToggle("Speed Toggle", "Toggle speed", function(state)
---       print("Speed state", state)
---   end)
---
--- Extend this library as needed.
+-- Load Soka UI Library from your URL.
+local url = "https://raw.githubusercontent.com/sokashadow/soka_hub_library/main/main_library?t=" .. os.time()
+local response = game:HttpGet(url)
+local success, SokaUI = pcall(function() return loadstring(response)() end)
+if not success or not SokaUI then
+    error("Failed to load Soka UI Library: " .. tostring(SokaUI))
+end
 
-local SokaHubUI = {}
-local TweenService = game:GetService("TweenService")
+local Window = SokaUI:CreateWindow("Soka Hub", "DarkTheme")
+if not Window then
+    error("Failed to create Window from Soka UI Library")
+end
+
+-- Services
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
 
-----------------------------------------------------------------
--- Utility functions
-----------------------------------------------------------------
-local function Create(instance, properties)
-    local obj = Instance.new(instance)
-    for i, v in pairs(properties or {}) do
-        obj[i] = v
-    end
-    return obj
-end
+-- Global table for all connections
+local connections = {}
 
--- Simple drag functionality for a frame.
-local function MakeDraggable(frame)
-    local dragging, dragInput, dragStart, startPos
-    local function update(input)
-        local delta = input.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+-- States
+local FlightEnabled = false
+local SpeedEnabled = false
+local NoClipEnabled = false
+local TargetSpeed = 1           -- Default horizontal speed from slider
+local FlightSpeed = 50
+local DashSpeed = 100
+local DashCooldown = false
+local RunESPUpdate = true
+local NameESP = {}
+local CustomHighlights = {}
+local CustomESPColor = Color3.new(1, 0, 0)
+
+-------------------------------------------------------
+-- Create dedicated tabs
+-------------------------------------------------------
+
+-- Speed Tab & Section
+local SpeedTab = Window:CreateTab("Speed")
+local SpeedSection = SpeedTab:CreateSection("Speed")
+SpeedSection:NewKeybind("Speed Toggle", "Toggle speed with key", Enum.KeyCode.X, function()
+    SpeedEnabled = not SpeedEnabled
+    if SpeedEnabled then
+        local speedConnection = RunService.Heartbeat:Connect(function()
+            if LocalPlayer.Character and SpeedEnabled then
+                local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+                if hrp and humanoid then
+                    local moveDir = humanoid.MoveDirection
+                    local currentVel = hrp.Velocity
+                    local desiredVel = Vector3.new(moveDir.X * TargetSpeed, currentVel.Y, moveDir.Z * TargetSpeed)
+                    hrp.Velocity = currentVel:Lerp(desiredVel, 0.2)
+                end
+            end
+        end)
+        table.insert(connections, speedConnection)
     end
-    frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
+end)
+
+SpeedSection:NewSlider("Speed Value", "Adjust speed value", 500, 1, function(value)
+    TargetSpeed = value
+end, 1)
+
+-- Flight Tab & Section
+local FlightTab = Window:CreateTab("Flight")
+local FlightSection = FlightTab:CreateSection("Flight")
+FlightSection:NewKeybind("Flight Toggle", "Toggle flight with key", Enum.KeyCode.F, function()
+    FlightEnabled = not FlightEnabled
+    if FlightEnabled then
+        local char = LocalPlayer.Character
+        if char then
+            local humanoid = char:WaitForChild("Humanoid")
+            local hrp = char:WaitForChild("HumanoidRootPart")
+            local flightConn = RunService.RenderStepped:Connect(function()
+                if FlightEnabled then
+                    local desiredVel = Vector3.new(0, 0, 0)
+                    if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                        desiredVel = desiredVel + (Camera.CFrame.LookVector * FlightSpeed)
+                    end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                        desiredVel = desiredVel - (Camera.CFrame.LookVector * FlightSpeed)
+                    end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                        desiredVel = desiredVel + (Camera.CFrame.RightVector * FlightSpeed)
+                    end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                        desiredVel = desiredVel - (Camera.CFrame.RightVector * FlightSpeed)
+                    end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                        desiredVel = desiredVel + Vector3.new(0, FlightSpeed, 0)
+                    end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+                        desiredVel = desiredVel - Vector3.new(0, FlightSpeed, 0)
+                    end
+                    hrp.Velocity = hrp.Velocity:Lerp(desiredVel, 0.1)
                 end
             end)
+            table.insert(connections, flightConn)
         end
-    end)
-    frame.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
+    end
+end)
+
+FlightSection:NewSlider("Flight Speed", "Adjust flight speed", 500, 1, function(value)
+    FlightSpeed = value
+end)
+
+-- NoClip Tab & Section
+local NoclipTab = Window:CreateTab("NoClip")
+local NoclipSection = NoclipTab:CreateSection("NoClip")
+NoclipSection:NewToggle("NoClip", "Phase through objects", function(state)
+    NoClipEnabled = state
+    if NoClipEnabled then
+        RunService:BindToRenderStep("NoClip", 100, function()
+            if LocalPlayer.Character then
+                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    else
+        RunService:UnbindFromRenderStep("NoClip")
+    end
+end)
+
+-- Dash Tab & Section
+local DashTab = Window:CreateTab("Dash")
+local DashSection = DashTab:CreateSection("Dash")
+DashSection:NewKeybind("Dash", "Press to dash", Enum.KeyCode.Q, function()
+    if not DashCooldown and LocalPlayer.Character then
+        DashCooldown = true
+        local HRP = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if HRP then
+            local BV = Instance.new("BodyVelocity")
+            BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            BV.Velocity = Camera.CFrame.LookVector * DashSpeed
+            BV.Parent = HRP
+            game:GetService("Debris"):AddItem(BV, 0.2)
+            task.wait(1)
+            DashCooldown = false
         end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            update(input)
-        end
-    end)
+    end
+end)
+
+DashSection:NewSlider("Dash Force", "Adjust dash force", 500, 50, function(value)
+    DashSpeed = value
+end)
+
+-------------------------------------------------------
+-- Visual Tab (ESP)
+-------------------------------------------------------
+local VisualTab = Window:CreateTab("Visual")
+local ESPSection = VisualTab:CreateSection("ESP")
+
+local function CreateNameESP(player)
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "NameESP"
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.AlwaysOnTop = true
+    billboard.StudsOffset = Vector3.new(0, 2, 0)
+    
+    local name = Instance.new("TextLabel")
+    name.Name = "PlayerName"
+    name.BackgroundTransparency = 1
+    name.Size = UDim2.new(1, 0, 0, 20)
+    name.Font = Enum.Font.SourceSansBold
+    name.TextColor3 = Color3.new(1, 1, 1)
+    name.TextSize = 14
+    name.Text = player.Name
+    name.Parent = billboard
+    
+    return billboard
 end
 
-----------------------------------------------------------------
--- Core objects - Window Object
-----------------------------------------------------------------
-local Window = {}
-Window.__index = Window
-
--- Create a new tab within the window.
-function Window:CreateTab(name)
-    -- Create a container for this tab's content as a ScrollingFrame, so if extra sections are added, the user can scroll.
-    local container = Create("ScrollingFrame", {
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundTransparency = 1,
-        Parent = self._content,
-        ScrollingEnabled = true,
-        ScrollBarThickness = 5,
-        AutomaticCanvasSize = Enum.AutomaticCanvasSize.Y,
-    })
-    container.Visible = (#self.Tabs == 0)
-    
-    local layout = Create("UIListLayout", {
-        Parent = container,
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        Padding = UDim.new(0, 5),
-    })
-    
-    -- Create the tab object.
-    local tab = {
-        Name = name,
-        Sections = {},
-        _container = container,
-    }
-    
-    -- Methods for the tab.
-    setmetatable(tab, {
-        __index = {
-            CreateSection = function(self, sectionName)
-                -- Create a container for a section.
-                local sectionFrame = Create("Frame", {
-                    Size = UDim2.new(0, 250, 0, 150),
-                    BackgroundColor3 = Color3.fromRGB(30, 30, 30),
-                    BorderSizePixel = 0,
-                    Name = sectionName,
-                    Parent = self._container,
-                })
-                
-                local sectionLabel = Create("TextLabel", {
-                    Size = UDim2.new(1, 0, 0, 30),
-                    Text = sectionName,
-                    BackgroundTransparency = 1,
-                    TextColor3 = Color3.new(1,1,1),
-                    Font = Enum.Font.SourceSansBold,
-                    TextSize = 20,
-                    Parent = sectionFrame,
-                })
-                
-                -- Layout for dynamically adding elements.
-                local layout = Create("UIListLayout", {
-                    SortOrder = Enum.SortOrder.LayoutOrder,
-                    Parent = sectionFrame,
-                })
-                
-                -- Table to track added elements.
-                local section = {
-                    Frame = sectionFrame,
-                    Elements = {},
-                }
-                
-                -- Create a toggle.
-                function section:NewToggle(text, desc, callback)
-                    local toggle = {}
-                    toggle.State = false
-                    
-                    local btn = Create("TextButton", {
-                        Size = UDim2.new(1, -10, 0, 30),
-                        Text = text .. " [OFF]",
-                        BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-                        TextColor3 = Color3.new(1,1,1),
-                        Font = Enum.Font.SourceSans,
-                        TextSize = 18,
-                        Parent = sectionFrame,
-                    })
-                    
-                    btn.MouseButton1Click:Connect(function()
-                        toggle.State = not toggle.State
-                        btn.Text = text .. (toggle.State and " [ON]" or " [OFF]")
-                        if callback then
-                            callback(toggle.State)
+local function UpdateAllESP()
+    while RunESPUpdate do
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                if player.Character and player.Character:FindFirstChild("Head") then
+                    if NameESP[player] then
+                        if not player.Character.Head:FindFirstChild("NameESP") then
+                            local esp = CreateNameESP(player)
+                            NameESP[player] = esp
+                            esp.Parent = player.Character.Head
                         end
-                    end)
-                    
-                    table.insert(self.Elements, btn)
+                    end
+                    if player.Character:FindFirstChild("Humanoid") then
+                        local highlight = player.Character:FindFirstChild("ESP_Highlight")
+                        if highlight then
+                            local health = player.Character.Humanoid.Health
+                            local maxHealth = player.Character.Humanoid.MaxHealth
+                            local healthPercent = health / maxHealth
+                            highlight.FillColor = Color3.new(1 - healthPercent, healthPercent, 0)
+                        end
+                    end
+                    if CustomHighlights[player] then
+                        if not player.Character:FindFirstChild("Highlight") then
+                            local highlight = Instance.new("Highlight")
+                            highlight.FillTransparency = 0.5
+                            highlight.OutlineTransparency = 0
+                            highlight.FillColor = CustomESPColor
+                            highlight.OutlineColor = Color3.new(1, 1, 1)
+                            highlight.Parent = player.Character
+                            CustomHighlights[player] = highlight
+                        end
+                    end
                 end
-                
-                -- Create a slider.
-                function section:NewSlider(text, desc, max, min, callback, default)
-                    local defaultVal = default or min or 0
-                    local sliderFrame = Create("Frame", {
-                        Size = UDim2.new(1, -10, 0, 40),
-                        BackgroundColor3 = Color3.fromRGB(50,50,50),
-                        Parent = sectionFrame,
-                    })
-                    
-                    local title = Create("TextLabel", {
-                        Size = UDim2.new(1, 0, 0, 20),
-                        Text = text .. " (" .. defaultVal .. ")",
-                        BackgroundTransparency = 1,
-                        TextColor3 = Color3.new(1,1,1),
-                        Font = Enum.Font.SourceSans,
-                        TextSize = 18,
-                        Parent = sliderFrame,
-                    })
-                    
-                    local slider = Create("Frame", {
-                        Size = UDim2.new(0, 0, 0, 10),
-                        BackgroundColor3 = Color3.new(1,1,1),
-                        Position = UDim2.new(0, 0, 1, -10),
-                        Parent = sliderFrame,
-                    })
-                    
-                    local dragging = false
-                    
-                    sliderFrame.InputBegan:Connect(function(input)
-                        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                            dragging = true
-                        end
-                    end)
-                    
-                    sliderFrame.InputEnded:Connect(function(input)
-                        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                            dragging = false
-                        end
-                    end)
-                    
-                    sliderFrame.InputChanged:Connect(function(input)
-                        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                            local x = math.clamp(input.Position.X - sliderFrame.AbsolutePosition.X, 0, sliderFrame.AbsoluteSize.X)
-                            local percent = x / sliderFrame.AbsoluteSize.X
-                            local value = math.floor(min + (max - min) * percent)
-                            title.Text = text .. " (" .. value .. ")"
-                            slider.Size = UDim2.new(percent, 0, 0, 10)
-                            if callback then
-                                callback(value)
-                            end
-                        end
-                    end)
-                    
-                    table.insert(self.Elements, sliderFrame)
-                end
-                
-                -- Create a keybind.
-                function section:NewKeybind(text, desc, key, callback)
-                    local keybindFrame = Create("Frame", {
-                        Size = UDim2.new(1, -10, 0, 30),
-                        BackgroundColor3 = Color3.fromRGB(50,50,50),
-                        Parent = sectionFrame,
-                    })
-                    
-                    local label = Create("TextLabel", {
-                        Size = UDim2.new(0.6, 0, 1, 0),
-                        Text = text .. " [" .. (key and key.Name or "None") .. "]",
-                        BackgroundTransparency = 1,
-                        TextColor3 = Color3.new(1,1,1),
-                        Font = Enum.Font.SourceSans,
-                        TextSize = 18,
-                        Parent = keybindFrame,
-                    })
-                    
-                    local btn = Create("TextButton", {
-                        Size = UDim2.new(0.4, 0, 1, 0),
-                        Text = "Change",
-                        BackgroundColor3 = Color3.fromRGB(70,70,70),
-                        TextColor3 = Color3.new(1,1,1),
-                        Font = Enum.Font.SourceSans,
-                        TextSize = 18,
-                        Parent = keybindFrame,
-                    })
-                    
-                    -- Use a local variable to hold this keybind's current key.
-                    local boundKey = key or Enum.KeyCode.Unknown
-                    local inputListener
-
-                    btn.MouseButton1Click:Connect(function()
-                        label.Text = text .. " [ ... ]"
-                        -- Use a temporary connection to capture the next key input.
-                        local tempConn
-                        tempConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-                            if gameProcessed then return end
-                            if input.UserInputType == Enum.UserInputType.Keyboard then
-                                boundKey = input.KeyCode
-                                label.Text = text .. " [" .. boundKey.Name .. "]"
-                                if callback then
-                                    callback(boundKey)
-                                end
-                                tempConn:Disconnect()
-                            end
-                        end)
-                    end)
-                    
-                    -- Persistent listener that fires the callback when the bound key is pressed.
-                    inputListener = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-                        if gameProcessed then return end
-                        if boundKey ~= Enum.KeyCode.Unknown and input.KeyCode == boundKey then
-                            if callback then
-                                callback(boundKey)
-                            end
-                        end
-                    end)
-                    
-                    table.insert(self.Elements, keybindFrame)
-                end
-                
-                -- Create a button.
-                function section:NewButton(text, desc, callback)
-                    local btn = Create("TextButton", {
-                        Size = UDim2.new(1, -10, 0, 30),
-                        Text = text,
-                        BackgroundColor3 = Color3.fromRGB(50,50,50),
-                        TextColor3 = Color3.new(1,1,1),
-                        Font = Enum.Font.SourceSans,
-                        TextSize = 18,
-                        Parent = sectionFrame,
-                    })
-                    
-                    btn.MouseButton1Click:Connect(function()
-                        if callback then
-                            callback()
-                        end
-                    end)
-                    
-                    table.insert(self.Elements, btn)
-                end
-                
-                return section
-            end,
-            _container = tab._container -- use the tab's container for sections
-        }
-    })
-    
-    -- Create a clickable tab label/button in the TabHolder.
-    local tabLabel = Create("TextButton", {
-        Size = UDim2.new(0, 100, 0, 30),
-        Text = name,
-        BackgroundColor3 = Color3.fromRGB(40,40,40),
-        TextColor3 = Color3.new(1,1,1),
-        Font = Enum.Font.SourceSansBold,
-        TextSize = 20,
-        Parent = self._tabHolder,
-    })
-    
-    tabLabel.MouseButton1Click:Connect(function()
-        for _, t in ipairs(self.Tabs) do
-            t._container.Visible = false
-        end
-        container.Visible = true
-        for _, child in ipairs(self._tabHolder:GetChildren()) do
-            if child:IsA("TextButton") then
-                child.BackgroundColor3 = Color3.fromRGB(40,40,40)
             end
         end
-        tabLabel.BackgroundColor3 = Color3.fromRGB(70,70,70)
-    end)
-    
-    table.insert(self.Tabs, tab)
-    return tab
+        task.wait(0.1)
+    end
 end
 
-----------------------------------------------------------------
--- Library Creation
-----------------------------------------------------------------
-function SokaHubUI:CreateWindow(title, theme)
-    -- Create main ScreenGui and Window Frame; use PlayerGui for compatibility.
-    local ScreenGui = Create("ScreenGui", {
-        Name = "SokaHubUI",
-        Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-    })
+ESPSection:NewToggle("Name ESP", "Shows player names", function(state)
+    if state then
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                local esp = CreateNameESP(player)
+                NameESP[player] = esp
+                esp.Parent = player.Character:WaitForChild("Head")
+            end
+        end
+    else
+        for _, esp in pairs(NameESP) do
+            esp:Destroy()
+        end
+        NameESP = {}
+    end
+end)
+
+ESPSection:NewToggle("Health ESP", "Shows health-based highlights", function(state)
+    if state then
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "ESP_Highlight"
+                highlight.Parent = player.Character
+            end
+        end
+    else
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player.Character then
+                local highlight = player.Character:FindFirstChild("ESP_Highlight")
+                if highlight then highlight:Destroy() end
+            end
+        end
+    end
+end)
+
+ESPSection:NewColorPicker("ESP Color", "Pick custom ESP color", Color3.new(1, 0, 0), function(color)
+    CustomESPColor = color
+    for _, highlight in pairs(CustomHighlights) do
+        highlight.FillColor = color
+    end
+end)
+
+-------------------------------------------------------
+-- Settings Tab
+-------------------------------------------------------
+local SettingsTab = Window:CreateTab("Settings")
+local SettingsSection = SettingsTab:CreateSection("GUI Settings")
+
+SettingsSection:NewDropdown("Theme", "Change UI Theme", {
+    "DarkTheme",
+    "LightTheme",
+    "BloodTheme",
+    "GrapeTheme",
+    "Ocean",
+    "Midnight",
+    "Sentinel",
+    "Synapse"
+}, function(currentTheme)
+    SokaUI:ChangeTheme(currentTheme)
+end)
+
+SettingsSection:NewKeybind("Toggle GUI", "Shows/Hides the GUI", Enum.KeyCode.RightShift, function()
+    Window:ToggleUI()
+end)
+
+local function unloadScript()
+    -- Disconnect all connections.
+    for _, con in ipairs(connections) do
+        pcall(function() con:Disconnect() end)
+    end
+    connections = {}
     
-    local MainFrame = Create("Frame", {
-        Size = UDim2.new(0, 600, 0, 400),
-        Position = UDim2.new(0.5, -300, 0.5, -200),
-        BackgroundColor3 = (theme == "DarkTheme") and Color3.fromRGB(20,20,20) or Color3.fromRGB(240,240,240),
-        BorderSizePixel = 0,
-        Parent = ScreenGui,
-    })
+    -- Destroy all Name ESP elements.
+    for _, esp in pairs(NameESP) do
+        pcall(function() esp:Destroy() end)
+    end
+    NameESP = {}
     
-    -- Title label.
-    local TitleLabel = Create("TextLabel", {
-        Size = UDim2.new(1, 0, 0, 30),
-        Text = title,
-        BackgroundTransparency = 1,
-        TextColor3 = (theme == "DarkTheme") and Color3.new(1,1,1) or Color3.new(0,0,0),
-        Font = Enum.Font.SourceSansBold,
-        TextSize = 24,
-        Parent = MainFrame,
-    })
+    -- Destroy all custom highlights.
+    for _, highlight in pairs(CustomHighlights) do
+        pcall(function() highlight:Destroy() end)
+    end
+    CustomHighlights = {}
     
-    -- Holder for Tabs.
-    local TabHolder = Create("Frame", {
-        Size = UDim2.new(1, 0, 0, 40),
-        BackgroundColor3 = Color3.fromRGB(30,30,30),
-        BorderSizePixel = 0,
-        Parent = MainFrame,
-        Position = UDim2.new(0, 0, 0, 30),
-    })
-    local tabListLayout = Create("UIListLayout", {
-        Parent = TabHolder,
-        FillDirection = Enum.FillDirection.Horizontal,
-        HorizontalAlignment = Enum.HorizontalAlignment.Left,
-        VerticalAlignment = Enum.VerticalAlignment.Center,
-        Padding = UDim.new(0, 5),
-    })
-    
-    -- Content holder for tab contents (sections).
-    local ContentHolder = Create("Frame", {
-        Size = UDim2.new(1, 0, 1, -70),
-        BackgroundColor3 = Color3.fromRGB(25,25,25),
-        BorderSizePixel = 0,
-        Parent = MainFrame,
-        Position = UDim2.new(0, 0, 0, 70),
-    })
-    
-    -- Make the MainFrame draggable.
-    MakeDraggable(MainFrame)
-    
-    local window = setmetatable({
-        _Tabs = {},
-        Tabs = {},
-        _tabHolder = TabHolder,
-        _content = ContentHolder,
-        Screen = ScreenGui,
-        Window = MainFrame,
-        Title = title,
-        Themes = {DarkTheme = true, LightTheme = false},
-    }, Window)
-    
-    return window
+    -- Destroy the main window.
+    if Window.Destroy then
+        pcall(function() Window:Destroy() end)
+    end
+    print("Script unloaded successfully.")
 end
 
-return SokaHubUI
+SettingsSection:NewButton("Unload Script", "Unload all changes and close the GUI", unloadScript)
+
+-- Optionally, start the ESP update loop.
+task.spawn(UpdateAllESP)
