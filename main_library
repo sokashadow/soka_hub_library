@@ -406,3 +406,8 @@ function SokaHubUI:CreateWindow(title, themeName)
         -- Create the window table that will be returned with window functions
     local window = setmetatable({}, Window)
     window._tabHolder = TabHolder
+
+
+
+
+return SokaHubUI
