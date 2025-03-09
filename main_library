@@ -1,19 +1,30 @@
 --[[ 
+
 	SokaHub UI Library
+
 	------------------
+
 	This is a basic UI library for Roblox that creates a draggable window with tabs and sections.
+
 	You can add elements (toggles, sliders, buttons, and keybinds) to sections.
+
 	Usage:
+
 		local Library = loadstring(game:HttpGet("https://yourdomain.com/SokaHubUI.lua"))()
+
 		local Window = Library:CreateWindow("Soka Hub", "DarkTheme")
+
 		local MainTab = Window:CreateTab("Main")
+
 		local SpeedSection = MainTab:CreateSection("Speed")
+
 		SpeedSection:NewToggle("Speed Toggle", "Toggle speed", function(state)
 			print("Speed state", state)
 		end)
-	-- Extend this library as needed.
---]]
 
+	-- Extend this library as needed.
+
+--]]
 local SokaHubUI = {}
 
 local TweenService = game:GetService("TweenService")
@@ -22,7 +33,6 @@ local UserInputService = game:GetService("UserInputService")
 ----------------------------------------------------------------
 -- Utility functions
 ----------------------------------------------------------------
-
 local function Create(instance, properties)
 	local obj = Instance.new(instance)
 	for i, v in pairs(properties or {}) do
@@ -71,20 +81,31 @@ local Window = {}
 Window.__index = Window
 
 function Window:CreateTab(name)
+	-- Create a container for this tab
+	local container = Create("Frame", {
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
+		Parent = self._content,
+	})
+	-- Make the first tab visible; hide any subsequent tabs.
+	container.Visible = (#self.Tabs == 0)
+	-- Create a new tab object.
 	local tab = {
 		Name = name,
-		Sections = {}
+		Sections = {},
+		_container = container,
 	}
+	-- Set up the tab's methods (for creating sections).
 	setmetatable(tab, {
 		__index = {
 			CreateSection = function(self, sectionName)
-				-- Create a simple frame for a section
+				-- Create a simple frame for a section within this tab's container.
 				local sectionFrame = Create("Frame", {
 					Size = UDim2.new(0, 250, 0, 150),
 					BackgroundColor3 = Color3.fromRGB(30,30,30),
 					BorderSizePixel = 0,
 					Name = sectionName,
-					Parent = self._container
+					Parent = self._container,
 				})
 				
 				local sectionLabel = Create("TextLabel", {
@@ -97,12 +118,12 @@ function Window:CreateTab(name)
 					Parent = sectionFrame,
 				})
 				
-				-- Handy layout for the new elements in the section:
+				-- Handy layout for the new elements added to the section:
 				local layout = Create("UIListLayout", {
 					SortOrder = Enum.SortOrder.LayoutOrder,
-					Parent = sectionFrame
+					Parent = sectionFrame,
 				})
-				-- Keeping track of added elements (optional)
+				-- Keeping track of added elements (optional).
 				local section = {
 					Frame = sectionFrame,
 					Elements = {},
@@ -228,7 +249,7 @@ function Window:CreateTab(name)
 						end
 					end)
 					
-					-- NEW: Immediately listen for the bound key press.
+					-- Immediately listen for the bound key press.
 					UserInputService.InputBegan:Connect(function(input, gameProcessed)
 						if gameProcessed then return end
 						if input.KeyCode == key then
@@ -263,12 +284,12 @@ function Window:CreateTab(name)
 				
 				return section
 			end,
-			_container = self._content -- tab container for sections
+			_container = tab._container -- use the tab's container for sections
 		}
 	})
-	table.insert(self.Tabs, tab)
-	-- For simplicity, add a text label to represent the tab (can be later replaced with interactive buttons)
-	local tabLabel = Create("TextLabel", {
+	
+	-- Create a clickable tab label/button in the TabHolder.
+	local tabLabel = Create("TextButton", {
 		Size = UDim2.new(0, 100, 0, 30),
 		Text = name,
 		BackgroundColor3 = Color3.fromRGB(40,40,40),
@@ -277,6 +298,23 @@ function Window:CreateTab(name)
 		TextSize = 20,
 		Parent = self._tabHolder,
 	})
+	
+	-- When this tab is clicked, hide all other tab containers and show this one.
+	tabLabel.MouseButton1Click:Connect(function()
+		for _, t in ipairs(self.Tabs) do
+			t._container.Visible = false
+		end
+		container.Visible = true
+		-- Optional: Update tab label appearance (for example, highlight this tab).
+		for _, child in ipairs(self._tabHolder:GetChildren()) do
+			if child:IsA("TextButton") then
+				child.BackgroundColor3 = Color3.fromRGB(40,40,40)
+			end
+		end
+		tabLabel.BackgroundColor3 = Color3.fromRGB(70,70,70)
+	end)
+	
+	table.insert(self.Tabs, tab)
 	return tab
 end
 
@@ -304,7 +342,7 @@ function SokaHubUI:CreateWindow(title, theme)
 		Size = UDim2.new(1, 0, 0, 30),
 		Text = title,
 		BackgroundTransparency = 1,
-		TextColor3 = Color3.new(1,1,1),
+		TextColor3 = (theme == "DarkTheme") and Color3.new(1,1,1) or Color3.new(0,0,0),
 		Font = Enum.Font.SourceSansBold,
 		TextSize = 24,
 		Parent = MainFrame,
@@ -316,7 +354,7 @@ function SokaHubUI:CreateWindow(title, theme)
 		BackgroundColor3 = Color3.fromRGB(30,30,30),
 		BorderSizePixel = 0,
 		Parent = MainFrame,
-		Position = UDim2.new(0,0,0,30)
+		Position = UDim2.new(0, 0, 0, 30)
 	})
 	
 	-- Content holder for tab contents (sections)
@@ -325,7 +363,7 @@ function SokaHubUI:CreateWindow(title, theme)
 		BackgroundColor3 = Color3.fromRGB(25,25,25),
 		BorderSizePixel = 0,
 		Parent = MainFrame,
-		Position = UDim2.new(0,0,0,70)
+		Position = UDim2.new(0, 0, 0, 70)
 	})
 	
 	-- Make the MainFrame draggable
