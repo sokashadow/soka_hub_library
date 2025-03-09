@@ -5,26 +5,38 @@
 	------------------
 
 	This is a basic UI library for Roblox that creates a draggable window with tabs and sections.
+
 	You can add elements (toggles, sliders, buttons, and keybinds) to sections.
 
 	Usage:
+
 		local Library = loadstring(game:HttpGet("https://yourdomain.com/SokaHubUI.lua"))()
+
 		local Window = Library:CreateWindow("Soka Hub", "DarkTheme")
+
 		local MainTab = Window:CreateTab("Main")
+
 		local SpeedSection = MainTab:CreateSection("Speed")
+
 		SpeedSection:NewToggle("Speed Toggle", "Toggle speed", function(state)
+
 			print("Speed state", state)
+
 		end)
+
 	-- Extend this library as needed.
 
 --]]
+
 local SokaHubUI = {}
+
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 ----------------------------------------------------------------
 -- Utility functions
 ----------------------------------------------------------------
+
 local function Create(instance, properties)
 	local obj = Instance.new(instance)
 	for i, v in pairs(properties or {}) do
@@ -36,12 +48,10 @@ end
 -- Simple drag functionality for a frame.
 local function MakeDraggable(frame)
 	local dragging, dragInput, dragStart, startPos
-
 	local function update(input)
 		local delta = input.Position - dragStart
 		frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 	end
-
 	frame.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			dragging = true
@@ -54,13 +64,11 @@ local function MakeDraggable(frame)
 			end)
 		end
 	end)
-
 	frame.InputChanged:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseMovement then
 			dragInput = input
 		end
 	end)
-
 	UserInputService.InputChanged:Connect(function(input)
 		if input == dragInput and dragging then
 			update(input)
@@ -71,6 +79,7 @@ end
 ----------------------------------------------------------------
 -- Core objects
 ----------------------------------------------------------------
+
 -- Window Object
 local Window = {}
 Window.__index = Window
@@ -194,6 +203,7 @@ function Window:CreateTab(name)
 					table.insert(self.Elements, sliderFrame)
 				end
 				
+				-- Modified Keybind: Immediately listen for the default key press.
 				function section:NewKeybind(text, desc, key, callback)
 					local keybindFrame = Create("Frame", {
 						Size = UDim2.new(1, -10, 0, 30),
@@ -229,6 +239,16 @@ function Window:CreateTab(name)
 						label.Text = text .. " [" .. key.Name .. "]"
 						if callback then
 							callback(key)
+						end
+					end)
+					
+					-- NEW: Immediately listen for the bound key press.
+					UserInputService.InputBegan:Connect(function(input, gameProcessed)
+						if gameProcessed then return end
+						if input.KeyCode == key then
+							if callback then
+								callback(key)
+							end
 						end
 					end)
 					
@@ -277,6 +297,7 @@ end
 ----------------------------------------------------------------
 -- Library Creation
 ----------------------------------------------------------------
+
 function SokaHubUI:CreateWindow(title, theme)
 	-- Create main ScreenGui and Window Frame; use PlayerGui instead of CoreGui for compatibility
 	local ScreenGui = Create("ScreenGui", {
@@ -314,29 +335,4 @@ function SokaHubUI:CreateWindow(title, theme)
 	
 	-- Content holder for tab contents (sections)
 	local ContentHolder = Create("Frame", {
-		Size = UDim2.new(1, 0, 1, -70),
-		BackgroundColor3 = Color3.fromRGB(25,25,25),
-		BorderSizePixel = 0,
-		Parent = MainFrame,
-		Position = UDim2.new(0,0,0,70)
-	})
-	
-	-- Make the MainFrame draggable
-	MakeDraggable(MainFrame)
-	
-	-- Window Object Setup
-	local window = setmetatable({
-		_Tabs = {},
-		Tabs = {},
-		_tabHolder = TabHolder,
-		_content = ContentHolder,
-		Screen = ScreenGui,
-		Window = MainFrame,
-		Title = title,
-		Themes = {DarkTheme = true, LightTheme = false},
-	}, Window)
-	
-	return window
-end
-
-return SokaHubUI
+		Size = UDim2.new(1, 0
