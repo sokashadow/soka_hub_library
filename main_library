@@ -9,10 +9,10 @@
       • NewDropdown and NewColorPicker element methods.
       • A ChangeTheme function (both as a method on Window and via SokaHubUI).
       • A ToggleUI function on the Window to show/hide the interface.
-      • Config saving/loading functionality.
-         ▪ SaveConfig and LoadConfig methods on the Window iterate over each section’s elements.
-         ▪ A Settings tab that includes a dropdown for selecting configs, a Save Config button, a ToggleUI button,
-           and a Change Theme button.
+      • Config saving/loading functionality:
+           ▪ SaveConfig and LoadConfig methods on the Window iterate over each section’s elements.
+           ▪ A Settings tab that includes a dropdown for selecting configs, a Save Config button, a ToggleUI button,
+             and a Change Theme button.
       
     Further ideas:
       • Add animations (UI tweening) when a button is hovered.
@@ -28,9 +28,26 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 ----------------------------------------------------------------
+-- Helper color functions
+----------------------------------------------------------------
+local function Color3ToHex(color)
+    local r = math.floor(color.R * 255)
+    local g = math.floor(color.G * 255)
+    local b = math.floor(color.B * 255)
+    return string.format("%02X%02X%02X", r, g, b)
+end
+
+local function HexToColor3(hex)
+    hex = hex:gsub("#", "")
+    local r = tonumber(hex:sub(1,2), 16) / 255
+    local g = tonumber(hex:sub(3,4), 16) / 255
+    local b = tonumber(hex:sub(5,6), 16) / 255
+    return Color3.new(r, g, b)
+end
+
+----------------------------------------------------------------
 -- Utility functions
 ----------------------------------------------------------------
-
 local function Create(instance, properties)
     local obj = Instance.new(instance)
     for i, v in pairs(properties or {}) do
@@ -42,7 +59,6 @@ end
 -- Only allow dragging from the title bar.
 local function MakeDraggable(dragArea, frame)
     local dragging, dragInput, dragStart, startPos
-
     local function update(input)
         local delta = input.Position - dragStart
         frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
@@ -100,11 +116,13 @@ function Window:CreateTab(name)
         container.CanvasSize = UDim2.new(0, container.AbsoluteSize.X, 0, layout.AbsoluteContentSize.Y)
     end)
     container.Visible = (#self.Tabs == 0)  -- first tab visible
+
     local tab = {
         Name = name,
         Sections = {},
         _container = container,
     }
+
     -- Methods available on a tab.
     setmetatable(tab, {
         __index = {
@@ -242,22 +260,18 @@ function Window:CreateTab(name)
                     })
                     Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = btn })
                     btn.MouseButton1Click:Connect(function()
-                        label.Text = text .. " [ ... ]"
-                        local input = UserInputService.InputBegan:Wait()
-                        key = input.KeyCode
-                        label.Text = text .. " [" .. key.Name .. "]"
-                        if callback then
-                            callback(key)
-                        end
-                        keybindFrame._configValue = key.Name
-                    end)
-                    UserInputService.InputBegan:Connect(function(input, gameProcessed)
-                        if gameProcessed then return end
-                        if input.KeyCode == key then
+                        label.Text = text .. " [Press a key]"
+                        local keyConnection
+                        keyConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                            if gameProcessed then return end
+                            key = input.KeyCode
+                            label.Text = text .. " [" .. key.Name .. "]"
                             if callback then
                                 callback(key)
                             end
-                        end
+                            keybindFrame._configValue = key.Name
+                            keyConnection:Disconnect()
+                        end)
                     end)
                     keybindFrame._configType = "keybind"
                     table.insert(self.Elements, keybindFrame)
@@ -297,7 +311,7 @@ function Window:CreateTab(name)
                     }
                     local currentIndex = 1
                     for i, col in ipairs(colorOptions) do
-                        if col:ToHex() == defaultColor:ToHex() then
+                        if Color3ToHex(col) == Color3ToHex(defaultColor) then
                             currentIndex = i
                             break
                         end
@@ -317,7 +331,7 @@ function Window:CreateTab(name)
                         TextSize = 18,
                         Parent = pickerFrame,
                     })
-                    local colorBox = Create("TextButton", {
+                                        local colorBox = Create("TextButton", {
                         Size = UDim2.new(0.4, -5, 1, 0),
                         Text = "",
                         BackgroundColor3 = colorOptions[currentIndex],
@@ -331,7 +345,7 @@ function Window:CreateTab(name)
                         if callback then
                             callback(newColor)
                         end
-                        pickerFrame._configValue = newColor:ToHex()
+                        pickerFrame._configValue = Color3ToHex(newColor)
                     end)
                     pickerFrame._configType = "colorpicker"
                     table.insert(self.Elements, pickerFrame)
@@ -352,7 +366,6 @@ function Window:CreateTab(name)
         TextSize = 20,
         Parent = self._tabHolder,
     })
-
     tabLabel.MouseButton1Click:Connect(function()
         for _, t in ipairs(self.Tabs) do
             t._container.Visible = false
@@ -365,7 +378,6 @@ function Window:CreateTab(name)
         end
         tabLabel.BackgroundColor3 = Color3.fromRGB(70,70,70)
     end)
-
     table.insert(self.Tabs, tab)
     return tab
 end
@@ -409,12 +421,11 @@ end
 function Window:SaveConfig(configName)
     local config = {}
     for _, tab in ipairs(self.Tabs) do
-        for _, section in ipairs(tab.Sections) do
-            for _, element in ipairs(section.Elements) do
+        for i, section in ipairs(tab.Sections) do
+            for j, element in ipairs(section.Elements) do
+                local elementKey = element.Name or ("Element_" .. tostring(j))
                 if element._configType then
-                    -- For identification purposes, we use the element Name or generate one.
-                    local key = element.Name or "Element_" .. tostring(math.random(1000,9999))
-                    config[key] = element._configValue
+                    config[elementKey] = element._configValue
                 end
             end
         end
@@ -430,34 +441,31 @@ function Window:LoadConfig(configName)
         return
     end
     for _, tab in ipairs(self.Tabs) do
-        for _, section in ipairs(tab.Sections) do
-            for _, element in ipairs(section.Elements) do
-                if element._configType then
-                    local key = element.Name or "Element_" .. tostring(math.random(1000,9999))
-                    local value = config[key]
-                    if value then
-                        if element._configType == "toggle" then
-                            element._configValue = value
-                            element.Text = string.gsub(element.Text, "%[.+%]", value and "[ON]" or "[OFF]")
-                        elseif element._configType == "slider" then
-                            element._configValue = value
-                            local title = element:FindFirstChildOfClass("TextLabel")
-                            if title then
-                                title.Text = title.Text:gsub("%(.*%)", "("..value..")")
-                            end
+        for i, section in ipairs(tab.Sections) do
+            for j, element in ipairs(section.Elements) do
+                local elementKey = element.Name or ("Element_" .. tostring(j))
+                local value = config[elementKey]
+                if value then
+                    if element._configType == "toggle" then
+                        element._configValue = value
+                        element.Text = string.gsub(element.Text, "%[.+%]", value and "[ON]" or "[OFF]")
+                    elseif element._configType == "slider" then
+                        element._configValue = value
+                        local title = element:FindFirstChildOfClass("TextLabel")
+                        if title then
                             title.Text = title.Text:gsub("%(.*%)", "("..value..")")
-                        elseif element._configType == "colorpicker" then
-                            element._configValue = value
-                            local colorBox = element:FindFirstChildWhichIsA("TextButton")
-                            if colorBox then
-                                colorBox.BackgroundColor3 = Color3.fromHex(value)
-                            end
-                        elseif element._configType == "keybind" then
-                            element._configValue = value
-                            local label = element:FindFirstChildOfClass("TextLabel")
-                            if label then
-                                label.Text = label.Text:gsub("%[.*%]", "["..value.."]")
-                            end
+                        end
+                    elseif element._configType == "colorpicker" then
+                        element._configValue = value
+                        local colorBox = element:FindFirstChildWhichIsA("TextButton")
+                        if colorBox then
+                            colorBox.BackgroundColor3 = HexToColor3(value)
+                        end
+                    elseif element._configType == "keybind" then
+                        element._configValue = value
+                        local label = element:FindFirstChildOfClass("TextLabel")
+                        if label then
+                            label.Text = label.Text:gsub("%[.*%]", "["..value.."]")
                         end
                     end
                 end
@@ -511,29 +519,27 @@ function SokaHubUI:CreateWindow(title, theme)
         Position = UDim2.new(0, 0, 0, 30)
     })
     
-    local ContentHolder = Create("Frame", {
+       local Content = Create("Frame", {
         Size = UDim2.new(1, 0, 1, -70),
+        Position = UDim2.new(0, 0, 0, 70),
         BackgroundColor3 = (theme == "DarkTheme") and Color3.fromRGB(25,25,25) or Color3.fromRGB(230,230,230),
         BorderSizePixel = 0,
         Parent = MainFrame,
-        Position = UDim2.new(0, 0, 0, 70)
     })
+
+    local window = {
+        Window = MainFrame,
+        TitleBar = TitleBar,
+        _tabHolder = TabHolder,
+        _content = Content,
+        Tabs = {}
+    }
     
     MakeDraggable(TitleBar, MainFrame)
     
-    local window = setmetatable({
-        _Tabs = {},
-        Tabs = {},
-        _tabHolder = TabHolder,
-        _content = ContentHolder,
-        Screen = ScreenGui,
-        Window = MainFrame,
-        TitleBar = TitleBar,
-        Title = title,
-        Themes = {DarkTheme = true, LightTheme = false},
-    }, Window)
-    
-    return window
+    return setmetatable(window, Window)
 end
 
 return SokaHubUI
+
+
