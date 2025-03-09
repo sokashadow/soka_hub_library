@@ -1,32 +1,30 @@
 --[[ 
+
 	SokaHub UI Library
+
 	------------------
+
 	This is a basic UI library for Roblox that creates a draggable window with tabs and sections.
 	You can add elements (toggles, sliders, buttons, and keybinds) to sections.
-	
+
 	Usage:
-	local Library = loadstring(game:HttpGet("https://yourdomain.com/SokaHubUI.lua"))()
-	local Window = Library:CreateWindow("Soka Hub", "DarkTheme")
-	
-	local MainTab = Window:CreateTab("Main")
-	local SpeedSection = MainTab:CreateSection("Speed")
-	
-	SpeedSection:NewToggle("Speed Toggle", "Toggle speed", function(state)
-		print("Speed state", state)
-	end)
-	
+		local Library = loadstring(game:HttpGet("https://yourdomain.com/SokaHubUI.lua"))()
+		local Window = Library:CreateWindow("Soka Hub", "DarkTheme")
+		local MainTab = Window:CreateTab("Main")
+		local SpeedSection = MainTab:CreateSection("Speed")
+		SpeedSection:NewToggle("Speed Toggle", "Toggle speed", function(state)
+			print("Speed state", state)
+		end)
 	-- Extend this library as needed.
+
 --]]
-
 local SokaHubUI = {}
-
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 ----------------------------------------------------------------
 -- Utility functions
 ----------------------------------------------------------------
-
 local function Create(instance, properties)
 	local obj = Instance.new(instance)
 	for i, v in pairs(properties or {}) do
@@ -73,7 +71,6 @@ end
 ----------------------------------------------------------------
 -- Core objects
 ----------------------------------------------------------------
-
 -- Window Object
 local Window = {}
 Window.__index = Window
@@ -144,7 +141,6 @@ function Window:CreateTab(name)
 				
 				function section:NewSlider(text, desc, max, min, callback, default)
 					local defaultVal = default or min or 0
-
 					local sliderFrame = Create("Frame", {
 						Size = UDim2.new(1, -10, 0, 40),
 						BackgroundColor3 = Color3.fromRGB(50,50,50),
@@ -265,7 +261,7 @@ function Window:CreateTab(name)
 		}
 	})
 	table.insert(self.Tabs, tab)
-	-- (For simplicity, we add a text label to represent the tab — you can later add buttons/real tab switching)
+	-- For simplicity, add a text label to represent the tab (can be later replaced with interactive buttons)
 	local tabLabel = Create("TextLabel", {
 		Size = UDim2.new(0, 100, 0, 30),
 		Text = name,
@@ -281,12 +277,11 @@ end
 ----------------------------------------------------------------
 -- Library Creation
 ----------------------------------------------------------------
-
 function SokaHubUI:CreateWindow(title, theme)
-	-- Create main ScreenGui and Window Frame
+	-- Create main ScreenGui and Window Frame; use PlayerGui instead of CoreGui for compatibility
 	local ScreenGui = Create("ScreenGui", {
 		Name = "SokaHubUI",
-		Parent = game.CoreGui
+		Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 	})
 	
 	local MainFrame = Create("Frame", {
