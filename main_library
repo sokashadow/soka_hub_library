@@ -1,24 +1,28 @@
 --[[
     SokaHub UI Library (Modified)
 
-    This version adds:
+    Features added in this version:
       • A ScrollingFrame for tab content (sections) so that if content is long it scrolls.
       • Rounded corners and improved color styling for buttons/toggles (Kavo UI–like).
       • Dragging only via the top Title bar instead of the entire window.
       
       • NewDropdown and NewColorPicker element methods.
       • A ChangeTheme function (both as a method on Window and via SokaHubUI).
-      • A ToggleUI function on the Window to hide/show the interface.
-
+      • A ToggleUI function on the Window to show/hide the interface.
+      • Config saving/loading functionality.
+         ▪ SaveConfig and LoadConfig methods on the Window iterate over each section’s elements.
+         ▪ A Settings tab that includes a dropdown for selecting configs, a Save Config button, a ToggleUI button,
+           and a Change Theme button.
+      
     Further ideas:
       • Add animations (UI tweening) when a button is hovered.
       • Add notifications for key events.
       • Provide theme switching with custom gradients and fonts.
-      • Allow saving/loading user configurations.
       • Expand element options (like icons on buttons, extra callbacks for changes).
 --]]
 
 local SokaHubUI = {}
+SokaHubUI.Configs = {}  -- table to store configuration presets
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -78,8 +82,8 @@ end
 local Window = {}
 Window.__index = Window
 
+-- Create a tab; each tab has its own content container and holds sections.
 function Window:CreateTab(name)
-    -- Container for this tab's content is now a scrolling frame.
     local container = Create("ScrollingFrame", {
         Size = UDim2.new(1, 0, 1, 0),
         BackgroundTransparency = 1,
@@ -101,6 +105,7 @@ function Window:CreateTab(name)
         Sections = {},
         _container = container,
     }
+    -- Methods available on a tab.
     setmetatable(tab, {
         __index = {
             CreateSection = function(self, sectionName)
@@ -111,7 +116,6 @@ function Window:CreateTab(name)
                     Name = sectionName,
                     Parent = self._container,
                 })
-                -- Mimic Kavo UI round style:
                 Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = sectionFrame })
                 
                 local sectionLabel = Create("TextLabel", {
@@ -130,9 +134,10 @@ function Window:CreateTab(name)
                 })
                 local section = {
                     Frame = sectionFrame,
-                    Elements = {},
+                    Elements = {}, -- elements for config saving/loading
                 }
                 
+                -- NewToggle: creates a toggle button.
                 function section:NewToggle(text, desc, callback)
                     local toggle = { State = false }
                     local btn = Create("TextButton", {
@@ -151,10 +156,13 @@ function Window:CreateTab(name)
                         if callback then
                             callback(toggle.State)
                         end
+                        btn._configValue = toggle.State
                     end)
+                    btn._configType = "toggle"
                     table.insert(self.Elements, btn)
                 end
-                
+
+                -- NewSlider: creates a slider that updates a value.
                 function section:NewSlider(text, desc, max, min, callback, default)
                     local defaultVal = default or min or 0
                     local sliderFrame = Create("Frame", {
@@ -199,11 +207,14 @@ function Window:CreateTab(name)
                             if callback then
                                 callback(value)
                             end
+                            sliderFrame._configValue = value
                         end
                     end)
+                    sliderFrame._configType = "slider"
                     table.insert(self.Elements, sliderFrame)
                 end
-                
+
+                -- NewKeybind: allows binding a key to an action.
                 function section:NewKeybind(text, desc, key, callback)
                     local keybindFrame = Create("Frame", {
                         Size = UDim2.new(1, -10, 0, 30),
@@ -238,6 +249,7 @@ function Window:CreateTab(name)
                         if callback then
                             callback(key)
                         end
+                        keybindFrame._configValue = key.Name
                     end)
                     UserInputService.InputBegan:Connect(function(input, gameProcessed)
                         if gameProcessed then return end
@@ -247,9 +259,11 @@ function Window:CreateTab(name)
                             end
                         end
                     end)
+                    keybindFrame._configType = "keybind"
                     table.insert(self.Elements, keybindFrame)
                 end
-                
+
+                -- NewButton: creates a regular button.
                 function section:NewButton(text, desc, callback)
                     local btn = Create("TextButton", {
                         Size = UDim2.new(1, -10, 0, 30),
@@ -266,11 +280,11 @@ function Window:CreateTab(name)
                             callback()
                         end
                     end)
+                    btn._configType = "button"  -- usually buttons don't store config
                     table.insert(self.Elements, btn)
                 end
 
-                -- NewColorPicker: a button that shows the currently selected color.
-                -- When clicked, it cycles through preset color options and calls the callback.
+                -- NewColorPicker: a button that cycles through preset colors.
                 function section:NewColorPicker(text, desc, defaultColor, callback)
                     local colorOptions = {
                         Color3.fromRGB(255, 0, 0),
@@ -282,7 +296,6 @@ function Window:CreateTab(name)
                         Color3.fromRGB(255, 255, 255)
                     }
                     local currentIndex = 1
-                    -- Try to find defaultColor in list
                     for i, col in ipairs(colorOptions) do
                         if col:ToHex() == defaultColor:ToHex() then
                             currentIndex = i
@@ -318,7 +331,9 @@ function Window:CreateTab(name)
                         if callback then
                             callback(newColor)
                         end
+                        pickerFrame._configValue = newColor:ToHex()
                     end)
+                    pickerFrame._configType = "colorpicker"
                     table.insert(self.Elements, pickerFrame)
                 end
 
@@ -327,7 +342,7 @@ function Window:CreateTab(name)
             _container = tab._container
         }
     })
-    
+
     local tabLabel = Create("TextButton", {
         Size = UDim2.new(0, 100, 0, 30),
         Text = name,
@@ -337,7 +352,7 @@ function Window:CreateTab(name)
         TextSize = 20,
         Parent = self._tabHolder,
     })
-    
+
     tabLabel.MouseButton1Click:Connect(function()
         for _, t in ipairs(self.Tabs) do
             t._container.Visible = false
@@ -350,7 +365,7 @@ function Window:CreateTab(name)
         end
         tabLabel.BackgroundColor3 = Color3.fromRGB(70,70,70)
     end)
-    
+
     table.insert(self.Tabs, tab)
     return tab
 end
@@ -387,9 +402,74 @@ function Window:ChangeTheme(newTheme)
     end
 end
 
-----------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- Config Functions: SaveConfig and LoadConfig for managing settings.
+--------------------------------------------------------------------------------
+
+function Window:SaveConfig(configName)
+    local config = {}
+    for _, tab in ipairs(self.Tabs) do
+        for _, section in ipairs(tab.Sections) do
+            for _, element in ipairs(section.Elements) do
+                if element._configType then
+                    -- For identification purposes, we use the element Name or generate one.
+                    local key = element.Name or "Element_" .. tostring(math.random(1000,9999))
+                    config[key] = element._configValue
+                end
+            end
+        end
+    end
+    SokaHubUI.Configs[configName] = config
+    print("Config saved: " .. configName)
+end
+
+function Window:LoadConfig(configName)
+    local config = SokaHubUI.Configs[configName]
+    if not config then
+        warn("Config " .. configName .. " does not exist!")
+        return
+    end
+    for _, tab in ipairs(self.Tabs) do
+        for _, section in ipairs(tab.Sections) do
+            for _, element in ipairs(section.Elements) do
+                if element._configType then
+                    local key = element.Name or "Element_" .. tostring(math.random(1000,9999))
+                    local value = config[key]
+                    if value then
+                        if element._configType == "toggle" then
+                            element._configValue = value
+                            element.Text = string.gsub(element.Text, "%[.+%]", value and "[ON]" or "[OFF]")
+                        elseif element._configType == "slider" then
+                            element._configValue = value
+                            local title = element:FindFirstChildOfClass("TextLabel")
+                            if title then
+                                title.Text = title.Text:gsub("%(.*%)", "("..value..")")
+                            end
+                            title.Text = title.Text:gsub("%(.*%)", "("..value..")")
+                        elseif element._configType == "colorpicker" then
+                            element._configValue = value
+                            local colorBox = element:FindFirstChildWhichIsA("TextButton")
+                            if colorBox then
+                                colorBox.BackgroundColor3 = Color3.fromHex(value)
+                            end
+                        elseif element._configType == "keybind" then
+                            element._configValue = value
+                            local label = element:FindFirstChildOfClass("TextLabel")
+                            if label then
+                                label.Text = label.Text:gsub("%[.*%]", "["..value.."]")
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    print("Config loaded: " .. configName)
+end
+
+--------------------------------------------------------------------------------
 -- Library Creation
-----------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 function SokaHubUI:CreateWindow(title, theme)
     local ScreenGui = Create("ScreenGui", {
@@ -405,7 +485,6 @@ function SokaHubUI:CreateWindow(title, theme)
         Parent = ScreenGui
     })
     
-    -- Title bar with drag only allowed via this area:
     local TitleBar = Create("Frame", {
         Name = "TitleBar",
         Size = UDim2.new(1, 0, 0, 30),
@@ -413,6 +492,7 @@ function SokaHubUI:CreateWindow(title, theme)
         BorderSizePixel = 0,
         Parent = MainFrame,
     })
+    
     local TitleLabel = Create("TextLabel", {
         Size = UDim2.new(1, 0, 1, 0),
         Text = title,
@@ -423,32 +503,22 @@ function SokaHubUI:CreateWindow(title, theme)
         Parent = TitleBar,
     })
     
-    -- Holder for Tabs
     local TabHolder = Create("Frame", {
         Size = UDim2.new(1, 0, 0, 40),
-        BackgroundColor3 = Color3.fromRGB(30,30,30),
+        BackgroundColor3 = (theme == "DarkTheme") and Color3.fromRGB(30,30,30) or Color3.fromRGB(220,220,220),
         BorderSizePixel = 0,
         Parent = MainFrame,
         Position = UDim2.new(0, 0, 0, 30)
     })
-    local tabListLayout = Create("UIListLayout", {
-        Parent = TabHolder,
-        FillDirection = Enum.FillDirection.Horizontal,
-        HorizontalAlignment = Enum.HorizontalAlignment.Left,
-        VerticalAlignment = Enum.VerticalAlignment.Center,
-        Padding = UDim.new(0, 5),
-    })
     
-    -- Content holder for tab contents (using our scrolling frame)
     local ContentHolder = Create("Frame", {
         Size = UDim2.new(1, 0, 1, -70),
-        BackgroundColor3 = Color3.fromRGB(25,25,25),
+        BackgroundColor3 = (theme == "DarkTheme") and Color3.fromRGB(25,25,25) or Color3.fromRGB(230,230,230),
         BorderSizePixel = 0,
         Parent = MainFrame,
         Position = UDim2.new(0, 0, 0, 70)
     })
     
-    -- Make the window only draggable by the TitleBar.
     MakeDraggable(TitleBar, MainFrame)
     
     local window = setmetatable({
@@ -458,8 +528,8 @@ function SokaHubUI:CreateWindow(title, theme)
         _content = ContentHolder,
         Screen = ScreenGui,
         Window = MainFrame,
-        Title = title,
         TitleBar = TitleBar,
+        Title = title,
         Themes = {DarkTheme = true, LightTheme = false},
     }, Window)
     
@@ -467,4 +537,3 @@ function SokaHubUI:CreateWindow(title, theme)
 end
 
 return SokaHubUI
-
