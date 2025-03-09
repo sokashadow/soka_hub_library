@@ -1,31 +1,17 @@
 --[[ 
-
 	SokaHub UI Library
-
 	------------------
-
 	This is a basic UI library for Roblox that creates a draggable window with tabs and sections.
-
 	You can add elements (toggles, sliders, buttons, and keybinds) to sections.
-
 	Usage:
-
 		local Library = loadstring(game:HttpGet("https://yourdomain.com/SokaHubUI.lua"))()
-
 		local Window = Library:CreateWindow("Soka Hub", "DarkTheme")
-
 		local MainTab = Window:CreateTab("Main")
-
 		local SpeedSection = MainTab:CreateSection("Speed")
-
 		SpeedSection:NewToggle("Speed Toggle", "Toggle speed", function(state)
-
 			print("Speed state", state)
-
 		end)
-
 	-- Extend this library as needed.
-
 --]]
 
 local SokaHubUI = {}
@@ -112,7 +98,7 @@ function Window:CreateTab(name)
 				})
 				
 				-- Handy layout for the new elements in the section:
-				local layout = Create("UIListLayout",{
+				local layout = Create("UIListLayout", {
 					SortOrder = Enum.SortOrder.LayoutOrder,
 					Parent = sectionFrame
 				})
@@ -335,4 +321,29 @@ function SokaHubUI:CreateWindow(title, theme)
 	
 	-- Content holder for tab contents (sections)
 	local ContentHolder = Create("Frame", {
-		Size = UDim2.new(1, 0
+		Size = UDim2.new(1, 0, 1, -70),
+		BackgroundColor3 = Color3.fromRGB(25,25,25),
+		BorderSizePixel = 0,
+		Parent = MainFrame,
+		Position = UDim2.new(0,0,0,70)
+	})
+	
+	-- Make the MainFrame draggable
+	MakeDraggable(MainFrame)
+	
+	-- Window Object Setup
+	local window = setmetatable({
+		_Tabs = {},
+		Tabs = {},
+		_tabHolder = TabHolder,
+		_content = ContentHolder,
+		Screen = ScreenGui,
+		Window = MainFrame,
+		Title = title,
+		Themes = {DarkTheme = true, LightTheme = false},
+	}, Window)
+	
+	return window
+end
+
+return SokaHubUI
