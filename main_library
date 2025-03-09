@@ -403,7 +403,6 @@ function SokaHubUI:CreateWindow(title, themeName)
         Padding = UDim.new(0, 10),
         Parent = ContentHolder
     })
-    
-    -- Create the window table that will be returned with window functions
+        -- Create the window table that will be returned with window functions
     local window = setmetatable({}, Window)
     window._tabHolder = TabHolder
