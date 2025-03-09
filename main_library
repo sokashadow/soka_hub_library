@@ -1,0 +1,347 @@
+--[[ 
+	SokaHub UI Library
+	------------------
+	This is a basic UI library for Roblox that creates a draggable window with tabs and sections.
+	You can add elements (toggles, sliders, buttons, and keybinds) to sections.
+	
+	Usage:
+	local Library = loadstring(game:HttpGet("https://yourdomain.com/SokaHubUI.lua"))()
+	local Window = Library:CreateWindow("Soka Hub", "DarkTheme")
+	
+	local MainTab = Window:CreateTab("Main")
+	local SpeedSection = MainTab:CreateSection("Speed")
+	
+	SpeedSection:NewToggle("Speed Toggle", "Toggle speed", function(state)
+		print("Speed state", state)
+	end)
+	
+	-- Extend this library as needed.
+--]]
+
+local SokaHubUI = {}
+
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+----------------------------------------------------------------
+-- Utility functions
+----------------------------------------------------------------
+
+local function Create(instance, properties)
+	local obj = Instance.new(instance)
+	for i, v in pairs(properties or {}) do
+		obj[i] = v
+	end
+	return obj
+end
+
+-- Simple drag functionality for a frame.
+local function MakeDraggable(frame)
+	local dragging, dragInput, dragStart, startPos
+
+	local function update(input)
+		local delta = input.Position - dragStart
+		frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+
+	frame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+			dragStart = input.Position
+			startPos = frame.Position
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragging = false
+				end
+			end)
+		end
+	end)
+
+	frame.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement then
+			dragInput = input
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			update(input)
+		end
+	end)
+end
+
+----------------------------------------------------------------
+-- Core objects
+----------------------------------------------------------------
+
+-- Window Object
+local Window = {}
+Window.__index = Window
+
+function Window:CreateTab(name)
+	local tab = {
+		Name = name,
+		Sections = {}
+	}
+	setmetatable(tab, {
+		__index = {
+			CreateSection = function(self, sectionName)
+				-- Create a simple frame for a section
+				local sectionFrame = Create("Frame", {
+					Size = UDim2.new(0, 250, 0, 150),
+					BackgroundColor3 = Color3.fromRGB(30,30,30),
+					BorderSizePixel = 0,
+					Name = sectionName,
+					Parent = self._container
+				})
+				
+				local sectionLabel = Create("TextLabel", {
+					Size = UDim2.new(1, 0, 0, 30),
+					Text = sectionName,
+					BackgroundTransparency = 1,
+					TextColor3 = Color3.new(1,1,1),
+					Font = Enum.Font.SourceSansBold,
+					TextSize = 20,
+					Parent = sectionFrame,
+				})
+				
+				-- Handy layout for the new elements in the section:
+				local layout = Create("UIListLayout",{
+					SortOrder = Enum.SortOrder.LayoutOrder,
+					Parent = sectionFrame
+				})
+				-- Keeping track of added elements (optional)
+				local section = {
+					Frame = sectionFrame,
+					Elements = {},
+				}
+				
+				-- Methods to add UI elements to the Section:
+				function section:NewToggle(text, desc, callback)
+					local toggle = {}
+					toggle.State = false
+					
+					local btn = Create("TextButton", {
+						Size = UDim2.new(1, -10, 0, 30),
+						Text = text.." [OFF]",
+						BackgroundColor3 = Color3.fromRGB(50,50,50),
+						TextColor3 = Color3.new(1,1,1),
+						Font = Enum.Font.SourceSans,
+						TextSize = 18,
+						Parent = sectionFrame,
+					})
+					
+					btn.MouseButton1Click:Connect(function()
+						toggle.State = not toggle.State
+						btn.Text = text .. (toggle.State and " [ON]" or " [OFF]")
+						if callback then
+							callback(toggle.State)
+						end
+					end)
+					
+					table.insert(self.Elements, btn)
+				end
+				
+				function section:NewSlider(text, desc, max, min, callback, default)
+					local defaultVal = default or min or 0
+
+					local sliderFrame = Create("Frame", {
+						Size = UDim2.new(1, -10, 0, 40),
+						BackgroundColor3 = Color3.fromRGB(50,50,50),
+						Parent = sectionFrame,
+					})
+					
+					local title = Create("TextLabel", {
+						Size = UDim2.new(1, 0, 0, 20),
+						Text = text .. " ("..defaultVal..")",
+						BackgroundTransparency = 1,
+						TextColor3 = Color3.new(1,1,1),
+						Font = Enum.Font.SourceSans,
+						TextSize = 18,
+						Parent = sliderFrame,
+					})
+					
+					local slider = Create("Frame", {
+						Size = UDim2.new(0, 0, 0, 10),
+						BackgroundColor3 = Color3.new(1,1,1),
+						Position = UDim2.new(0, 0, 1, -10),
+						Parent = sliderFrame,
+					})
+					
+					local dragging = false
+					
+					sliderFrame.InputBegan:Connect(function(input)
+						if input.UserInputType == Enum.UserInputType.MouseButton1 then
+							dragging = true
+						end
+					end)
+					
+					sliderFrame.InputEnded:Connect(function(input)
+						if input.UserInputType == Enum.UserInputType.MouseButton1 then
+							dragging = false
+						end
+					end)
+					
+					sliderFrame.InputChanged:Connect(function(input)
+						if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+							local x = math.clamp(input.Position.X - sliderFrame.AbsolutePosition.X, 0, sliderFrame.AbsoluteSize.X)
+							local percent = x / sliderFrame.AbsoluteSize.X
+							local value = math.floor(min + (max - min) * percent)
+							title.Text = text .. " (".. value..")"
+							slider.Size = UDim2.new(percent, 0, 0, 10)
+							if callback then
+								callback(value)
+							end
+						end
+					end)
+					
+					table.insert(self.Elements, sliderFrame)
+				end
+				
+				function section:NewKeybind(text, desc, key, callback)
+					local keybindFrame = Create("Frame", {
+						Size = UDim2.new(1, -10, 0, 30),
+						BackgroundColor3 = Color3.fromRGB(50,50,50),
+						Parent = sectionFrame,
+					})
+					
+					local label = Create("TextLabel", {
+						Size = UDim2.new(0.6,0,1,0),
+						Text = text .. " [" .. key.Name .. "]",
+						BackgroundTransparency = 1,
+						TextColor3 = Color3.new(1,1,1),
+						Font = Enum.Font.SourceSans,
+						TextSize = 18,
+						Parent = keybindFrame,
+					})
+					
+					local btn = Create("TextButton", {
+						Size = UDim2.new(0.4,0,1,0),
+						Text = "Change",
+						BackgroundColor3 = Color3.fromRGB(70,70,70),
+						TextColor3 = Color3.new(1,1,1),
+						Font = Enum.Font.SourceSans,
+						TextSize = 18,
+						Parent = keybindFrame,
+					})
+					
+					btn.MouseButton1Click:Connect(function()
+						-- Wait for new key
+						label.Text = text .. " [ ... ]"
+						local input = UserInputService.InputBegan:Wait()
+						key = input.KeyCode
+						label.Text = text .. " [" .. key.Name .. "]"
+						if callback then
+							callback(key)
+						end
+					end)
+					
+					table.insert(self.Elements, keybindFrame)
+				end
+				
+				function section:NewButton(text, desc, callback)
+					local btn = Create("TextButton", {
+						Size = UDim2.new(1, -10, 0, 30),
+						Text = text,
+						BackgroundColor3 = Color3.fromRGB(50,50,50),
+						TextColor3 = Color3.new(1,1,1),
+						Font = Enum.Font.SourceSans,
+						TextSize = 18,
+						Parent = sectionFrame,
+					})
+					
+					btn.MouseButton1Click:Connect(function()
+						if callback then
+							callback()
+						end
+					end)
+					
+					table.insert(self.Elements, btn)
+				end
+				
+				return section
+			end,
+			_container = self._content -- tab container for sections
+		}
+	})
+	table.insert(self.Tabs, tab)
+	-- (For simplicity, we add a text label to represent the tab — you can later add buttons/real tab switching)
+	local tabLabel = Create("TextLabel", {
+		Size = UDim2.new(0, 100, 0, 30),
+		Text = name,
+		BackgroundColor3 = Color3.fromRGB(40,40,40),
+		TextColor3 = Color3.new(1,1,1),
+		Font = Enum.Font.SourceSansBold,
+		TextSize = 20,
+		Parent = self._tabHolder,
+	})
+	return tab
+end
+
+----------------------------------------------------------------
+-- Library Creation
+----------------------------------------------------------------
+
+function SokaHubUI:CreateWindow(title, theme)
+	-- Create main ScreenGui and Window Frame
+	local ScreenGui = Create("ScreenGui", {
+		Name = "SokaHubUI",
+		Parent = game.CoreGui
+	})
+	
+	local MainFrame = Create("Frame", {
+		Size = UDim2.new(0, 600, 0, 400),
+		Position = UDim2.new(0.5, -300, 0.5, -200),
+		BackgroundColor3 = (theme == "DarkTheme") and Color3.fromRGB(20,20,20) or Color3.fromRGB(240,240,240),
+		BorderSizePixel = 0,
+		Parent = ScreenGui
+	})
+	
+	-- Title
+	local TitleLabel = Create("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 30),
+		Text = title,
+		BackgroundTransparency = 1,
+		TextColor3 = Color3.new(1,1,1),
+		Font = Enum.Font.SourceSansBold,
+		TextSize = 24,
+		Parent = MainFrame,
+	})
+	
+	-- Holder for Tabs
+	local TabHolder = Create("Frame", {
+		Size = UDim2.new(1, 0, 0, 40),
+		BackgroundColor3 = Color3.fromRGB(30,30,30),
+		BorderSizePixel = 0,
+		Parent = MainFrame,
+		Position = UDim2.new(0,0,0,30)
+	})
+	
+	-- Content holder for tab contents (sections)
+	local ContentHolder = Create("Frame", {
+		Size = UDim2.new(1, 0, 1, -70),
+		BackgroundColor3 = Color3.fromRGB(25,25,25),
+		BorderSizePixel = 0,
+		Parent = MainFrame,
+		Position = UDim2.new(0,0,0,70)
+	})
+	
+	-- Make the MainFrame draggable
+	MakeDraggable(MainFrame)
+	
+	-- Window Object Setup
+	local window = setmetatable({
+		_Tabs = {},
+		Tabs = {},
+		_tabHolder = TabHolder,
+		_content = ContentHolder,
+		Screen = ScreenGui,
+		Window = MainFrame,
+		Title = title,
+		Themes = {DarkTheme = true, LightTheme = false},
+	}, Window)
+	
+	return window
+end
+
+return SokaHubUI
