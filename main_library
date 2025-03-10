@@ -2,19 +2,12 @@
     SokaHub UI Library (Modified)
 
     Features added in this version:
-
       • A ScrollingFrame for tab content (sections) so that if content is long it scrolls.
-
       • Rounded corners and improved color styling for buttons/toggles (Kavo UI–like).
-
       • Dragging only via the top Title bar instead of the entire window.
-
       • NewDropdown and NewColorPicker element methods.
-
       • A ChangeTheme function (both as a method on Window and via SokaHubUI).
-
       • A ToggleUI function on the Window to show/hide the interface.
-
       • Config saving/loading functionality:
            ▪ SaveConfig and LoadConfig methods on the Window iterate over each section’s elements.
            ▪ A Settings tab that includes a dropdown for selecting configs, a Save Config button, a ToggleUI button,
@@ -388,8 +381,6 @@ function Window:CreateTabBar()
     })
     Create("UICorner", { CornerRadius = UDim.new(0, 10), Parent = tabBar })
     function tabBar:Refresh(tabs)
-        self:ClearAllChildren
-    function tabBar:Refresh(tabs)
         for _, child in ipairs(self:GetChildren()) do
             if child:IsA("GuiObject") then
                 child:Destroy()
@@ -415,7 +406,6 @@ function Window:CreateTabBar()
             end)
         end
     end
-
     self._tabBar = tabBar
     return tabBar
 end
@@ -449,7 +439,7 @@ function Window:LoadConfig(configName)
                 local key = element.Name or tostring(element)
                 if configType and config[key] then
                     element:SetAttribute("_configValue", config[key])
-                    -- Optionally update the element's visual state based on type.
+                    -- Optionally, update the element's visual state here based on its type.
                 end
             end
         end
@@ -459,6 +449,7 @@ end
 ----------------------------------------------------------------
 -- Window Initializer
 ----------------------------------------------------------------
+
 function SokaHubUI:CreateWindow(title)
     local ScreenGui = Create("ScreenGui", {
         Name = "SokaHubUI",
