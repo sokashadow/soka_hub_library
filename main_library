@@ -1,11 +1,9 @@
 --[[
     SokaHub UI Library (Modified)
-
     Features added in this version:
       • A ScrollingFrame for tab content (sections) so that if content is long it scrolls.
       • Rounded corners and improved color styling for buttons/toggles (Kavo UI–like).
       • Dragging only via the top Title bar instead of the entire window.
-      
       • NewDropdown and NewColorPicker element methods.
       • A ChangeTheme function (both as a method on Window and via SokaHubUI).
       • A ToggleUI function on the Window to show/hide the interface.
@@ -13,7 +11,6 @@
            ▪ SaveConfig and LoadConfig methods on the Window iterate over each section’s elements.
            ▪ A Settings tab that includes a dropdown for selecting configs, a Save Config button, a ToggleUI button,
              and a Change Theme button.
-      
     Further ideas:
       • Add animations (UI tweening) when a button is hovered.
       • Add notifications for key events.
@@ -93,7 +90,6 @@ end
 ----------------------------------------------------------------
 -- Core objects
 ----------------------------------------------------------------
-
 -- Window Object
 local Window = {}
 Window.__index = Window
@@ -154,6 +150,8 @@ function Window:CreateTab(name)
                     Frame = sectionFrame,
                     Elements = {}, -- elements for config saving/loading
                 }
+                -- FIX: insert the section into the tab's Sections table
+                table.insert(self.Sections, section)
                 
                 -- NewToggle: creates a toggle button.
                 function section:NewToggle(text, desc, callback)
@@ -331,14 +329,14 @@ function Window:CreateTab(name)
                         TextSize = 18,
                         Parent = pickerFrame,
                     })
-                                        local colorBox = Create("TextButton", {
+                    local colorBox = Create("TextButton", {
                         Size = UDim2.new(0.4, -5, 1, 0),
                         Text = "",
                         BackgroundColor3 = colorOptions[currentIndex],
                         Parent = pickerFrame,
                     })
                     Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = colorBox })
-                    colorBox.MouseButton1Click:Connect(function()
+                                        colorBox.MouseButton1Click:Connect(function()
                         currentIndex = (currentIndex % #colorOptions) + 1
                         local newColor = colorOptions[currentIndex]
                         colorBox.BackgroundColor3 = newColor
@@ -366,6 +364,7 @@ function Window:CreateTab(name)
         TextSize = 20,
         Parent = self._tabHolder,
     })
+
     tabLabel.MouseButton1Click:Connect(function()
         for _, t in ipairs(self.Tabs) do
             t._container.Visible = false
@@ -378,6 +377,7 @@ function Window:CreateTab(name)
         end
         tabLabel.BackgroundColor3 = Color3.fromRGB(70,70,70)
     end)
+
     table.insert(self.Tabs, tab)
     return tab
 end
@@ -519,14 +519,13 @@ function SokaHubUI:CreateWindow(title, theme)
         Position = UDim2.new(0, 0, 0, 30)
     })
     
-       local Content = Create("Frame", {
+    local Content = Create("Frame", {
         Size = UDim2.new(1, 0, 1, -70),
         Position = UDim2.new(0, 0, 0, 70),
         BackgroundColor3 = (theme == "DarkTheme") and Color3.fromRGB(25,25,25) or Color3.fromRGB(230,230,230),
         BorderSizePixel = 0,
         Parent = MainFrame,
     })
-
     local window = {
         Window = MainFrame,
         TitleBar = TitleBar,
@@ -541,5 +540,4 @@ function SokaHubUI:CreateWindow(title, theme)
 end
 
 return SokaHubUI
-
 
