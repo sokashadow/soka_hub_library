@@ -2,6 +2,7 @@
     SokaHub UI Library (Modified)
 
     Features added in this version:
+
       • A ScrollingFrame for tab content (sections) so that if content is long it scrolls.
       • Rounded corners and improved color styling for buttons/toggles (Kavo UI–like).
       • Dragging only via the top Title bar instead of the entire window.
@@ -12,6 +13,7 @@
            ▪ SaveConfig and LoadConfig methods on the Window iterate over each section’s elements.
            ▪ A Settings tab that includes a dropdown for selecting configs, a Save Config button, a ToggleUI button,
              and a Change Theme button.
+
     Further ideas:
       • Add animations (UI tweening) when a button is hovered.
       • Add notifications for key events.
@@ -105,20 +107,25 @@ function Window:CreateTab(name)
         Parent = self._content,
         CanvasSize = UDim2.new(0, 0, 0, 0),
     })
+
     local layout = Create("UIListLayout", {
         Parent = container,
         SortOrder = Enum.SortOrder.LayoutOrder,
         Padding = UDim.new(0, 5),
     })
+
     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         container.CanvasSize = UDim2.new(0, container.AbsoluteSize.X, 0, layout.AbsoluteContentSize.Y)
     end)
+
     container.Visible = (#self.Tabs == 0)  -- first tab visible
+
     local tab = {
         Name = name,
         Sections = {},
         _container = container,
     }
+
     setmetatable(tab, {
         __index = {
             CreateSection = function(self, sectionName)
@@ -270,7 +277,7 @@ function Window:CreateTab(name)
                             keyConnection:Disconnect()
                         end)
                     end)
-                                        keybindFrame:SetAttribute("_configType", "keybind")
+                    keybindFrame:SetAttribute("_configType", "keybind")
                     table.insert(self.Elements, keybindFrame)
                     SokaHubUI.ActiveKeybinds[keybindFrame] = {
                         key = key,
@@ -364,7 +371,6 @@ end
 ----------------------------------------------------------------
 -- Create a tab bar UI for switching tabs.
 ----------------------------------------------------------------
-
 function Window:CreateTabBar()
     local tabBar = Create("Frame", {
         Name = "TabBar",
@@ -375,7 +381,7 @@ function Window:CreateTabBar()
     })
     Create("UICorner", { CornerRadius = UDim.new(0, 10), Parent = tabBar })
     function tabBar:Refresh(tabs)
-        for _, child in ipairs(self:GetChildren()) do
+                for _, child in ipairs(self:GetChildren()) do
             if child:IsA("GuiObject") then
                 child:Destroy()
             end
@@ -407,7 +413,6 @@ end
 ----------------------------------------------------------------
 -- Config Saving/Loading Methods
 ----------------------------------------------------------------
-
 function Window:SaveConfig(configName)
     local config = {}
     for _, tab in pairs(self.Tabs) do
@@ -434,12 +439,11 @@ function Window:LoadConfig(configName)
                 local key = element.Name or tostring(element)
                 if configType and config[key] ~= nil then
                     element:SetAttribute("_configValue", config[key])
-                    -- Optionally update the element's visual state based on its type.
                     if configType == "toggle" then
                         element.Text = element.Text:gsub("%[ON%]", ""):gsub("%[OFF%]", "")
                         element.Text = element.Text .. (config[key] and "   [ON]" or "   [OFF]")
                     elseif configType == "slider" then
-                        -- You can update the slider's visual based on config[key] here.
+                        -- Optionally update the slider's visual state based on config[key].
                     elseif configType == "keybind" then
                         local curText = element:FindFirstChildWhichIsA("TextLabel")
                         if curText then
@@ -457,11 +461,10 @@ end
 ----------------------------------------------------------------
 -- Window Initializer
 ----------------------------------------------------------------
-
 function SokaHubUI:CreateWindow(title)
     local ScreenGui = Create("ScreenGui", {
         Name = "SokaHubUI",
-        Parent = game:GetService("CoreGui"),
+        Parent = game:GetService("StarterGui"),
     })
     
     local Main = Create("Frame", {
@@ -515,3 +518,4 @@ function SokaHubUI:CreateWindow(title)
 end
 
 return SokaHubUI
+
