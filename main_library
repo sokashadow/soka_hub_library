@@ -12,7 +12,6 @@
            ▪ SaveConfig and LoadConfig methods on the Window iterate over each section’s elements.
            ▪ A Settings tab that includes a dropdown for selecting configs, a Save Config button, a ToggleUI button,
              and a Change Theme button.
-
     Further ideas:
       • Add animations (UI tweening) when a button is hovered.
       • Add notifications for key events.
@@ -59,31 +58,33 @@ end
 
 -- Only allow dragging from the title bar.
 local function MakeDraggable(dragArea, frame)
-    local dragging, dragInput, dragStart, startPos
-    local function update(input)
-        local delta = input.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
+    local dragging = false
+    local dragStart, startPos
     dragArea.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
-            input.Changed:Connect(function()
+            local conn
+            conn = input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
                     dragging = false
+                    if conn then
+                        conn:Disconnect()
+                    end
                 end
             end)
         end
     end)
     dragArea.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            update(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
         end
     end)
 end
@@ -118,7 +119,6 @@ function Window:CreateTab(name)
         Sections = {},
         _container = container,
     }
-    -- Methods available on a tab.
     setmetatable(tab, {
         __index = {
             CreateSection = function(self, sectionName)
@@ -149,10 +149,8 @@ function Window:CreateTab(name)
                     Frame = sectionFrame,
                     Elements = {}, -- elements for config saving/loading
                 }
-                -- Insert the section into the tab's Sections table
                 table.insert(self.Sections, section)
                 
-                -- NewToggle: creates a toggle button.
                 function section:NewToggle(text, desc, callback)
                     local toggle = { State = false }
                     local btn = Create("TextButton", {
@@ -177,7 +175,6 @@ function Window:CreateTab(name)
                     table.insert(self.Elements, btn)
                 end
 
-                -- NewSlider: creates a slider that updates a value.
                 function section:NewSlider(text, desc, max, min, callback, default)
                     local defaultVal = default or min or 0
                     local sliderFrame = Create("Frame", {
@@ -229,7 +226,6 @@ function Window:CreateTab(name)
                     table.insert(self.Elements, sliderFrame)
                 end
 
-                -- NewKeybind: allows binding a key to an action and keeps a persistent global binding.
                 function section:NewKeybind(text, desc, key, callback)
                     local keybindFrame = Create("Frame", {
                         Size = UDim2.new(1, -10, 0, 30),
@@ -267,7 +263,6 @@ function Window:CreateTab(name)
                                 callback(key)
                             end
                             keybindFrame:SetAttribute("_configValue", key.Name)
-                            -- Update the persistent keybind table.
                             SokaHubUI.ActiveKeybinds[keybindFrame] = {
                                 key = key,
                                 callback = callback,
@@ -275,16 +270,14 @@ function Window:CreateTab(name)
                             keyConnection:Disconnect()
                         end)
                     end)
-                    keybindFrame:SetAttribute("_configType", "keybind")
+                                        keybindFrame:SetAttribute("_configType", "keybind")
                     table.insert(self.Elements, keybindFrame)
-                    -- Add initial keybind to the active table.
                     SokaHubUI.ActiveKeybinds[keybindFrame] = {
                         key = key,
                         callback = callback,
                     }
                 end
 
-                -- NewButton: creates a regular button.
                 function section:NewButton(text, desc, callback)
                     local btn = Create("TextButton", {
                         Size = UDim2.new(1, -10, 0, 30),
@@ -301,11 +294,10 @@ function Window:CreateTab(name)
                             callback()
                         end
                     end)
-                    btn:SetAttribute("_configType", "button")  -- usually buttons don't store config
+                    btn:SetAttribute("_configType", "button")
                     table.insert(self.Elements, btn)
                 end
 
-                -- NewColorPicker: a button that cycles through preset colors.
                 function section:NewColorPicker(text, desc, defaultColor, callback)
                     local colorOptions = {
                         Color3.fromRGB(255, 0, 0),
@@ -361,6 +353,7 @@ function Window:CreateTab(name)
             end,  -- End CreateSection
         },
     })
+
     table.insert(self.Tabs, tab)
     if self._tabBar then
         self._tabBar:Refresh(self.Tabs)
@@ -371,6 +364,7 @@ end
 ----------------------------------------------------------------
 -- Create a tab bar UI for switching tabs.
 ----------------------------------------------------------------
+
 function Window:CreateTabBar()
     local tabBar = Create("Frame", {
         Name = "TabBar",
@@ -413,6 +407,7 @@ end
 ----------------------------------------------------------------
 -- Config Saving/Loading Methods
 ----------------------------------------------------------------
+
 function Window:SaveConfig(configName)
     local config = {}
     for _, tab in pairs(self.Tabs) do
@@ -437,9 +432,22 @@ function Window:LoadConfig(configName)
             for _, element in pairs(section.Elements) do
                 local configType = element:GetAttribute("_configType")
                 local key = element.Name or tostring(element)
-                if configType and config[key] then
+                if configType and config[key] ~= nil then
                     element:SetAttribute("_configValue", config[key])
-                    -- Optionally, update the element's visual state here based on its type.
+                    -- Optionally update the element's visual state based on its type.
+                    if configType == "toggle" then
+                        element.Text = element.Text:gsub("%[ON%]", ""):gsub("%[OFF%]", "")
+                        element.Text = element.Text .. (config[key] and "   [ON]" or "   [OFF]")
+                    elseif configType == "slider" then
+                        -- You can update the slider's visual based on config[key] here.
+                    elseif configType == "keybind" then
+                        local curText = element:FindFirstChildWhichIsA("TextLabel")
+                        if curText then
+                            curText.Text = curText.Text:gsub("%[.+%]", "") .. " [" .. config[key] .. "]"
+                        end
+                    elseif configType == "button" then
+                        -- Buttons usually do not update state.
+                    end
                 end
             end
         end
