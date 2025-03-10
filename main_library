@@ -2,16 +2,24 @@
     SokaHub UI Library (Modified)
 
     Features added in this version:
+
       • A ScrollingFrame for tab content (sections) so that if content is long it scrolls.
+
       • Rounded corners and improved color styling for buttons/toggles (Kavo UI–like).
+
       • Dragging only via the top Title bar instead of the entire window.
+
       • NewDropdown and NewColorPicker element methods.
+
       • A ChangeTheme function (both as a method on Window and via SokaHubUI).
+
       • A ToggleUI function on the Window to show/hide the interface.
+
       • Config saving/loading functionality:
            ▪ SaveConfig and LoadConfig methods on the Window iterate over each section’s elements.
            ▪ A Settings tab that includes a dropdown for selecting configs, a Save Config button, a ToggleUI button,
              and a Change Theme button.
+
     Further ideas:
       • Add animations (UI tweening) when a button is hovered.
       • Add notifications for key events.
@@ -20,7 +28,9 @@
 --]]
 
 local SokaHubUI = {}
+
 SokaHubUI.Configs = {}  -- table to store configuration presets
+SokaHubUI.ActiveKeybinds = SokaHubUI.ActiveKeybinds or {}  -- table to store keybinds for persistent listening
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -61,7 +71,6 @@ local function MakeDraggable(dragArea, frame)
         local delta = input.Position - dragStart
         frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
-
     dragArea.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
@@ -74,13 +83,11 @@ local function MakeDraggable(dragArea, frame)
             end)
         end
     end)
-
     dragArea.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement then
             dragInput = input
         end
     end)
-
     UserInputService.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             update(input)
@@ -113,13 +120,11 @@ function Window:CreateTab(name)
         container.CanvasSize = UDim2.new(0, container.AbsoluteSize.X, 0, layout.AbsoluteContentSize.Y)
     end)
     container.Visible = (#self.Tabs == 0)  -- first tab visible
-
     local tab = {
         Name = name,
         Sections = {},
         _container = container,
     }
-
     -- Methods available on a tab.
     setmetatable(tab, {
         __index = {
@@ -151,7 +156,7 @@ function Window:CreateTab(name)
                     Frame = sectionFrame,
                     Elements = {}, -- elements for config saving/loading
                 }
-                -- FIX: insert the section into the tab's Sections table
+                -- Insert the section into the tab's Sections table
                 table.insert(self.Sections, section)
                 
                 -- NewToggle: creates a toggle button.
@@ -231,7 +236,7 @@ function Window:CreateTab(name)
                     table.insert(self.Elements, sliderFrame)
                 end
 
-                -- NewKeybind: allows binding a key to an action.
+                -- NewKeybind: allows binding a key to an action and keeps a persistent global binding.
                 function section:NewKeybind(text, desc, key, callback)
                     local keybindFrame = Create("Frame", {
                         Size = UDim2.new(1, -10, 0, 30),
@@ -269,11 +274,21 @@ function Window:CreateTab(name)
                                 callback(key)
                             end
                             keybindFrame:SetAttribute("_configValue", key.Name)
+                            -- Update the persistent keybind table.
+                            SokaHubUI.ActiveKeybinds[keybindFrame] = {
+                                key = key,
+                                callback = callback,
+                            }
                             keyConnection:Disconnect()
                         end)
                     end)
                     keybindFrame:SetAttribute("_configType", "keybind")
                     table.insert(self.Elements, keybindFrame)
+                    -- Add initial keybind to the active table.
+                    SokaHubUI.ActiveKeybinds[keybindFrame] = {
+                        key = key,
+                        callback = callback,
+                    }
                 end
 
                 -- NewButton: creates a regular button.
@@ -336,16 +351,14 @@ function Window:CreateTab(name)
                         BackgroundColor3 = colorOptions[currentIndex],
                         Parent = pickerFrame,
                     })
+                    Create("UICorner", { CornerRadius = UDim.new(0, 5
+                    local colorBox = Create("TextButton", {
+                        Size = UDim2.new(0.4, -5, 1, 0),
+                        Text = "",
+                        BackgroundColor3 = colorOptions[currentIndex],
+                        Parent = pickerFrame,
+                    })
                     Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = colorBox })
-                    colorBox.MouseButton1Click:Connect(function()
-                        currentIndex = (currentIndex % #colorOptions) + 1
-                        local newColor = colorOptions[currentIndex]
-                        colorBox.BackgroundColor3 = newColor
-                        if callback then
-                            callback(newColor)
-                        end
-                        pickerFrame:SetAttribute("_configValue", Color3ToHex(newColor))
-                    end)
                     colorBox.MouseButton1Click:Connect(function()
                         currentIndex = (currentIndex % #colorOptions) + 1
                         local newColor = colorOptions[currentIndex]
@@ -358,18 +371,61 @@ function Window:CreateTab(name)
                     table.insert(self.Elements, pickerFrame)
                 end
                 -- End NewColorPicker
-                
+
                 return section
-            end,  -- End CreateSection for tab
+            end,  -- End CreateSection
         },
     })
-    
+
     table.insert(self.Tabs, tab)
+    if self._tabBar then
+        self._tabBar:Refresh(self.Tabs)
+    end
     return tab
 end
 
 ----------------------------------------------------------------
--- Additional Window Methods (Config Saving/Loading)
+-- Create a tab bar UI for switching tabs.
+----------------------------------------------------------------
+function Window:CreateTabBar()
+    local tabBar = Create("Frame", {
+        Name = "TabBar",
+        Size = UDim2.new(1, 0, 0, 40),
+        Position = UDim2.new(0, 0, 0, 40),
+        BackgroundColor3 = Color3.fromRGB(30,30,30),
+        Parent = self._Main,
+    })
+    Create("UICorner", { CornerRadius = UDim.new(0, 10), Parent = tabBar })
+
+    function tabBar:Refresh(tabs)
+        self:ClearAllChildren()
+        for i, tab in ipairs(tabs) do
+            local btn = Create("TextButton", {
+                Name = tab.Name,
+                Text = tab.Name,
+                Size = UDim2.new(0, 100, 1, 0),
+                Position = UDim2.new(0, (i - 1) * 105, 0, 0),
+                BackgroundColor3 = Color3.fromRGB(70,70,70),
+                TextColor3 = Color3.new(1,1,1),
+                Font = Enum.Font.SourceSans,
+                TextSize = 18,
+                Parent = self,
+            })
+            btn.MouseButton1Click:Connect(function()
+                for _, otherTab in ipairs(tabs) do
+                    otherTab._container.Visible = false
+                end
+                tab._container.Visible = true
+            end)
+        end
+    end
+
+    self._tabBar = tabBar
+    return tabBar
+end
+
+----------------------------------------------------------------
+-- Config Saving/Loading Methods
 ----------------------------------------------------------------
 function Window:SaveConfig(configName)
     local config = {}
@@ -397,7 +453,7 @@ function Window:LoadConfig(configName)
                 local key = element.Name or tostring(element)
                 if configType and config[key] then
                     element:SetAttribute("_configValue", config[key])
-                    -- You might update the element's visual state here based on type.
+                    -- Optionally update the element's visual state based on type.
                 end
             end
         end
@@ -458,6 +514,7 @@ function SokaHubUI:CreateWindow(title)
     }, Window)
     
     MakeDraggable(TitleBar, Main)
+    selfWindow:CreateTabBar()
     
     return selfWindow
 end
