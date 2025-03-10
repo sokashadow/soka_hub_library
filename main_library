@@ -351,13 +351,6 @@ function Window:CreateTab(name)
                         BackgroundColor3 = colorOptions[currentIndex],
                         Parent = pickerFrame,
                     })
-                    Create("UICorner", { CornerRadius = UDim.new(0, 5
-                    local colorBox = Create("TextButton", {
-                        Size = UDim2.new(0.4, -5, 1, 0),
-                        Text = "",
-                        BackgroundColor3 = colorOptions[currentIndex],
-                        Parent = pickerFrame,
-                    })
                     Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = colorBox })
                     colorBox.MouseButton1Click:Connect(function()
                         currentIndex = (currentIndex % #colorOptions) + 1
@@ -370,13 +363,11 @@ function Window:CreateTab(name)
                     end)
                     table.insert(self.Elements, pickerFrame)
                 end
-                -- End NewColorPicker
 
                 return section
             end,  -- End CreateSection
         },
     })
-
     table.insert(self.Tabs, tab)
     if self._tabBar then
         self._tabBar:Refresh(self.Tabs)
@@ -396,9 +387,14 @@ function Window:CreateTabBar()
         Parent = self._Main,
     })
     Create("UICorner", { CornerRadius = UDim.new(0, 10), Parent = tabBar })
-
     function tabBar:Refresh(tabs)
-        self:ClearAllChildren()
+        self:ClearAllChildren
+    function tabBar:Refresh(tabs)
+        for _, child in ipairs(self:GetChildren()) do
+            if child:IsA("GuiObject") then
+                child:Destroy()
+            end
+        end
         for i, tab in ipairs(tabs) do
             local btn = Create("TextButton", {
                 Name = tab.Name,
