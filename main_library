@@ -2,7 +2,6 @@
     SokaHub UI Library (Modified)
 
     Features added in this version:
-
       • A ScrollingFrame for tab content (sections) so that if content is long it scrolls.
       • Rounded corners and improved color styling for buttons/toggles (Kavo UI–like).
       • Dragging only via the top Title bar instead of the entire window.
@@ -381,7 +380,7 @@ function Window:CreateTabBar()
     })
     Create("UICorner", { CornerRadius = UDim.new(0, 10), Parent = tabBar })
     function tabBar:Refresh(tabs)
-                for _, child in ipairs(self:GetChildren()) do
+        for _, child in ipairs(self:GetChildren()) do
             if child:IsA("GuiObject") then
                 child:Destroy()
             end
@@ -396,7 +395,7 @@ function Window:CreateTabBar()
                 TextColor3 = Color3.new(1,1,1),
                 Font = Enum.Font.SourceSans,
                 TextSize = 18,
-                Parent = self,
+                                Parent = self,
             })
             btn.MouseButton1Click:Connect(function()
                 for _, otherTab in ipairs(tabs) do
@@ -462,9 +461,12 @@ end
 -- Window Initializer
 ----------------------------------------------------------------
 function SokaHubUI:CreateWindow(title)
+    local Players = game:GetService("Players")
+    local player = Players.LocalPlayer
+    local PlayerGui = player and player:WaitForChild("PlayerGui")
     local ScreenGui = Create("ScreenGui", {
         Name = "SokaHubUI",
-        Parent = game:GetService("StarterGui"),
+        Parent = PlayerGui,
     })
     
     local Main = Create("Frame", {
