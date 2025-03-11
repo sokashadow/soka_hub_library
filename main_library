@@ -21,13 +21,17 @@
            ▪ SaveConfig and LoadConfig methods on the Window iterate over each section’s elements.
 
            ▪ A Settings tab that includes a dropdown for selecting configs, a Save Config button, a ToggleUI button,
+
              and a Change Theme button.
 
     Further ideas:
 
       • Add animations (UI tweening) when a button is hovered.  (Now added below)
+
       • Add notifications for key events.
+
       • Provide theme switching with custom gradients and fonts.
+
       • Expand element options (like icons on buttons, extra callbacks for changes).
 
 --]]
@@ -309,7 +313,8 @@ function Window:CreateTab(name)
                     end)
                     keybindFrame:SetAttribute("_configType", "keybind")
                     table.insert(self.Elements, keybindFrame)
-                    SokaHubUI
+                end
+                
                 function section:NewButton(text, desc, callback)
                     local btn = Create("TextButton", {
                         Size = UDim2.new(1, -10, 0, 30),
@@ -411,7 +416,7 @@ function Window:CreateTabBar()
         Parent = self._Main,
     })
     Create("UICorner", { CornerRadius = UDim.new(0, 10), Parent = tabBar })
-
+    
     function tabBar:Refresh(tabs)
         for _, child in ipairs(self:GetChildren()) do
             if child:IsA("GuiObject") then
@@ -465,7 +470,7 @@ function Window:ChangeTheme(newTheme)
     if self._tabBar then
         self._tabBar.BackgroundColor3 = newTheme.TabBar
         for _, child in ipairs(self._tabBar:GetChildren()) do
-            if child:IsA("TextButton") then
+                        if child:IsA("TextButton") then
                 child.BackgroundColor3 = newTheme.Button
                 child.TextColor3 = newTheme.Text
             end
@@ -596,3 +601,4 @@ function SokaHubUI:CreateWindow(title)
 end
 
 return SokaHubUI
+
