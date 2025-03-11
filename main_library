@@ -21,7 +21,6 @@
 --]]
 
 local SokaHubUI = {}
-
 SokaHubUI.Configs = {}  -- table to store configuration presets
 SokaHubUI.ActiveKeybinds = SokaHubUI.ActiveKeybinds or {}  -- table to store keybinds for persistent listening
 
@@ -31,6 +30,7 @@ local UserInputService = game:GetService("UserInputService")
 ----------------------------------------------------------------
 -- Helper color functions
 ----------------------------------------------------------------
+
 local function Color3ToHex(color)
     local r = math.floor(color.R * 255)
     local g = math.floor(color.G * 255)
@@ -49,6 +49,7 @@ end
 ----------------------------------------------------------------
 -- Utility functions
 ----------------------------------------------------------------
+
 local function Create(instance, properties)
     local obj = Instance.new(instance)
     for i, v in pairs(properties or {}) do
@@ -93,6 +94,7 @@ end
 ----------------------------------------------------------------
 -- Core objects
 ----------------------------------------------------------------
+
 -- Window Object
 local Window = {}
 Window.__index = Window
@@ -106,17 +108,14 @@ function Window:CreateTab(name)
         Parent = self._content,
         CanvasSize = UDim2.new(0, 0, 0, 0),
     })
-
     local layout = Create("UIListLayout", {
         Parent = container,
         SortOrder = Enum.SortOrder.LayoutOrder,
         Padding = UDim.new(0, 5),
     })
-
     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         container.CanvasSize = UDim2.new(0, container.AbsoluteSize.X, 0, layout.AbsoluteContentSize.Y)
     end)
-
     container.Visible = (#self.Tabs == 0)  -- first tab visible
 
     local tab = {
@@ -124,7 +123,6 @@ function Window:CreateTab(name)
         Sections = {},
         _container = container,
     }
-
     setmetatable(tab, {
         __index = {
             CreateSection = function(self, sectionName)
@@ -359,7 +357,6 @@ function Window:CreateTab(name)
             end,  -- End CreateSection
         },
     })
-
     table.insert(self.Tabs, tab)
     if self._tabBar then
         self._tabBar:Refresh(self.Tabs)
@@ -370,6 +367,7 @@ end
 ----------------------------------------------------------------
 -- Create a tab bar UI for switching tabs.
 ----------------------------------------------------------------
+
 function Window:CreateTabBar()
     local tabBar = Create("Frame", {
         Name = "TabBar",
@@ -389,14 +387,25 @@ function Window:CreateTabBar()
             local btn = Create("TextButton", {
                 Name = tab.Name,
                 Text = tab.Name,
-                Size = UDim2.new(0, 100, 1, 0),
-                Position = UDim2.new(0, (i - 1) * 105, 0, 0),
-                BackgroundColor3 = Color3.fromRGB(70,70,70),
-                TextColor3 = Color3.new(1,1,1),
-                Font = Enum.Font.SourceSans,
-                TextSize = 18,
-                                Parent = self,
-            })
+                Size = UDim2.new(
+    -- continue the Size property definition:
+    Size = UDim2.new(1/#tabs, 0, 1, 0),
+    BackgroundColor3 = Color3.fromRGB(50,50,50),
+    TextColor3 = Color3.new(1,1,1),
+    Font = Enum.Font.SourceSans,
+    TextSize = 18,
+    Parent = self,
+})
+Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = btn })
+btn.MouseButton1Click:Connect(function()
+    for _, otherTab in ipairs(tabs) do
+        otherTab._container.Visible = false
+    end
+    tab._container.Visible = true
+end)
+function Window:ToggleUI()
+    self._Main.Visible = not self._Main.Visible
+end
             btn.MouseButton1Click:Connect(function()
                 for _, otherTab in ipairs(tabs) do
                     otherTab._container.Visible = false
@@ -405,51 +414,42 @@ function Window:CreateTabBar()
             end)
         end
     end
-    self._tabBar = tabBar
     return tabBar
 end
 
 ----------------------------------------------------------------
--- Config Saving/Loading Methods
+-- Additional Window Methods
 ----------------------------------------------------------------
-function Window:SaveConfig(configName)
-    local config = {}
-    for _, tab in pairs(self.Tabs) do
-        for _, section in pairs(tab.Sections) do
-            for _, element in pairs(section.Elements) do
-                local configType = element:GetAttribute("_configType")
-                local configValue = element:GetAttribute("_configValue")
-                if configType then
-                    config[element.Name or tostring(element)] = configValue
-                end
+
+-- Change the theme for all UI elements
+function Window:ChangeTheme(newTheme)
+    newTheme = newTheme or {
+        Main = Color3.fromRGB(30, 30, 30),
+        TabBar = Color3.fromRGB(30, 30, 30),
+        Button = Color3.fromRGB(50, 50, 50),
+        Text = Color3.new(1, 1, 1)
+    }
+    self._Main.BackgroundColor3 = newTheme.Main
+    if self._tabBar then
+        self._tabBar.BackgroundColor3 = newTheme.TabBar
+        for _, child in ipairs(self._tabBar:GetChildren()) do
+            if child:IsA("TextButton") then
+                child.BackgroundColor3 = newTheme.Button
+                child.TextColor3 = newTheme.Text
             end
         end
     end
-    SokaHubUI.Configs[configName] = config
-end
-
-function Window:LoadConfig(configName)
-    local config = SokaHubUI.Configs[configName]
-    if not config then return end
-    for _, tab in pairs(self.Tabs) do
-        for _, section in pairs(tab.Sections) do
-            for _, element in pairs(section.Elements) do
-                local configType = element:GetAttribute("_configType")
-                local key = element.Name or tostring(element)
-                if configType and config[key] ~= nil then
-                    element:SetAttribute("_configValue", config[key])
-                    if configType == "toggle" then
-                        element.Text = element.Text:gsub("%[ON%]", ""):gsub("%[OFF%]", "")
-                        element.Text = element.Text .. (config[key] and "   [ON]" or "   [OFF]")
-                    elseif configType == "slider" then
-                        -- Optionally update the slider's visual state based on config[key].
-                    elseif configType == "keybind" then
-                        local curText = element:FindFirstChildWhichIsA("TextLabel")
-                        if curText then
-                            curText.Text = curText.Text:gsub("%[.+%]", "") .. " [" .. config[key] .. "]"
-                        end
-                    elseif configType == "button" then
-                        -- Buttons usually do not update state.
+    for _, tab in ipairs(self.Tabs) do
+        tab._container.BackgroundColor3 = newTheme.Main
+        for _, section in ipairs(tab.Sections) do
+            if section.Frame then
+                section.Frame.BackgroundColor3 = newTheme.Button
+                for _, obj in ipairs(section.Frame:GetChildren()) do
+                    if obj:IsA("TextLabel") then
+                        obj.TextColor3 = newTheme.Text
+                    elseif obj:IsA("TextButton") then
+                        obj.BackgroundColor3 = newTheme.Button
+                        obj.TextColor3 = newTheme.Text
                     end
                 end
             end
@@ -457,67 +457,116 @@ function Window:LoadConfig(configName)
     end
 end
 
+-- Save current config: iterates over all elements and saves their attributes
+function Window:SaveConfig(configName)
+    local config = {}
+    for _, tab in ipairs(self.Tabs) do
+        for _, section in ipairs(tab.Sections) do
+            for _, element in ipairs(section.Elements) do
+                local cfgType = element:GetAttribute("_configType")
+                local cfgValue = element:GetAttribute("_configValue")
+                if cfgType and cfgValue ~= nil then
+                    config[element.Name] = { type = cfgType, value = cfgValue }
+                end
+            end
+        end
+    end
+    SokaHubUI.Configs[configName] = config
+end
+
+-- Load a saved config (if it exists) and update UI elements accordingly
+function Window:LoadConfig(configName)
+    local config = SokaHubUI.Configs[configName]
+    if config then
+        for _, tab in ipairs(self.Tabs) do
+            for _, section in ipairs(tab.Sections) do
+                for _, element in ipairs(section.Elements) do
+                    local cfg = config[element.Name]
+                    if cfg then
+                        if cfg.type == "toggle" then
+                            element.Text = element.Text:gsub("%[.-%]", cfg.value and "[ON]" or "[OFF]")
+                        elseif cfg.type == "slider" then
+                            local percent = (cfg.value or 0) / 100  -- Assuming max=100 for this demo
+                            local slider = element:FindFirstChildWhichIsA("Frame")
+                            if slider then
+                                slider.Size = UDim2.new(percent, 0, 0, 10)
+                            end
+                        elseif cfg.type == "keybind" then
+                            local label = element:FindFirstChildOfClass("TextLabel")
+                            if label then
+                                local baseText = string.match(label.Text, "^(.-)%[")
+                                label.Text = baseText .. "[" .. cfg.value .. "]"
+                            end
+                        elseif cfg.type == "button" then
+                            -- Button type may not require re-assignment.
+                        elseif cfg.type == "colorPicker" then
+                            element.BackgroundColor3 = HexToColor3(cfg.value)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Toggle the entire UI's visibility
+function Window:ToggleUI()
+    self._Main.Enabled = not self._Main.Enabled
+end
+
 ----------------------------------------------------------------
--- Window Initializer
+-- Library Entry: Create a new Window
 ----------------------------------------------------------------
+
 function SokaHubUI:CreateWindow(title)
-    local Players = game:GetService("Players")
-    local player = Players.LocalPlayer
-    local PlayerGui = player and player:WaitForChild("PlayerGui")
-    local ScreenGui = Create("ScreenGui", {
-        Name = "SokaHubUI",
-        Parent = PlayerGui,
+    local selfWindow = setmetatable({ Tabs = {} }, Window)
+    
+    -- Main container
+    selfWindow._Main = Create("ScreenGui", {
+        Name = title or "SokaHub",
+        Parent = game:GetService("CoreGui")
     })
     
-    local Main = Create("Frame", {
-        Name = "Main",
-        Size = UDim2.new(0, 400, 0, 600),
-        Position = UDim2.new(0.5, -200, 0.5, -300),
-        BackgroundColor3 = Color3.fromRGB(40,40,40),
-        Parent = ScreenGui,
+    local mainFrame = Create("Frame", {
+        Size = UDim2.new(0, 400, 0, 300),
+        Position = UDim2.new(0.5, -200, 0.5, -150),
+        BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+        Parent = selfWindow._Main,
+        Active = true,
+        Draggable = false
     })
-    Create("UICorner", { CornerRadius = UDim.new(0, 10), Parent = Main })
+    Create("UICorner", { CornerRadius = UDim.new(0, 10), Parent = mainFrame })
     
-    local TitleBar = Create("Frame", {
-        Name = "TitleBar",
+    -- Title bar that allows dragging
+    local titleBar = Create("Frame", {
         Size = UDim2.new(1, 0, 0, 40),
-        BackgroundColor3 = Color3.fromRGB(30,30,30),
-        Parent = Main,
+        BackgroundColor3 = Color3.fromRGB(40, 40, 40),
+        Parent = mainFrame
     })
-    Create("UICorner", { CornerRadius = UDim.new(0, 10), Parent = TitleBar })
-    
-    local Title = Create("TextLabel", {
-        Name = "Title",
-        Size = UDim2.new(1, -10, 1, 0),
-        Position = UDim2.new(0, 5, 0, 0),
-        Text = title or "SokaHub UI",
-        TextColor3 = Color3.new(1,1,1),
+    local titleLabel = Create("TextLabel", {
+        Size = UDim2.new(1, 0, 1, 0),
+        Text = title or "SokaHub",
         BackgroundTransparency = 1,
+        TextColor3 = Color3.new(1, 1, 1),
         Font = Enum.Font.SourceSansBold,
-        TextSize = 24,
-        Parent = TitleBar,
+        TextSize = 20,
+        Parent = titleBar
     })
+    MakeDraggable(titleBar, mainFrame)
     
-    local Content = Create("Frame", {
-        Name = "Content",
-        Size = UDim2.new(1, 0, 1, -40),
-        Position = UDim2.new(0, 0, 0, 40),
+    -- Content container (for tabs/sections)
+    local content = Create("Frame", {
+        Size = UDim2.new(1, 0, 1, -80),
+        Position = UDim2.new(0, 0, 0, 80),
         BackgroundTransparency = 1,
-        Parent = Main,
+        Parent = mainFrame
     })
+    selfWindow._content = content
     
-    local selfWindow = setmetatable({
-        _ScreenGui = ScreenGui,
-        _Main = Main,
-        _content = Content,
-        Tabs = {},
-    }, Window)
-    
-    MakeDraggable(TitleBar, Main)
-    selfWindow:CreateTabBar()
+    -- Create the Tab Bar
+    selfWindow._tabBar = selfWindow:CreateTabBar()
     
     return selfWindow
 end
 
 return SokaHubUI
-
