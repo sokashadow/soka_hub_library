@@ -1,27 +1,41 @@
 --[[
+
     SokaHub UI Library (Modified)
 
     Features added in this version:
+
       • A ScrollingFrame for tab content (sections) so that if content is long it scrolls.
+
       • Rounded corners and improved color styling for buttons/toggles (Kavo UI–like).
+
       • Dragging only via the top Title bar instead of the entire window.
+
       • NewDropdown and NewColorPicker element methods.
+
       • A ChangeTheme function (both as a method on Window and via SokaHubUI).
+
       • A ToggleUI function on the Window to show/hide the interface.
+
       • Config saving/loading functionality:
+
            ▪ SaveConfig and LoadConfig methods on the Window iterate over each section’s elements.
+
            ▪ A Settings tab that includes a dropdown for selecting configs, a Save Config button, a ToggleUI button,
              and a Change Theme button.
+
     Further ideas:
-      • Add animations (UI tweening) when a button is hovered.
+
+      • Add animations (UI tweening) when a button is hovered.  (Now added below)
       • Add notifications for key events.
       • Provide theme switching with custom gradients and fonts.
       • Expand element options (like icons on buttons, extra callbacks for changes).
+
 --]]
 
 local SokaHubUI = {}
 
 SokaHubUI.Configs = {}  -- table to store configuration presets
+
 SokaHubUI.ActiveKeybinds = SokaHubUI.ActiveKeybinds or {}  -- table to store keybinds for persistent listening
 
 local TweenService = game:GetService("TweenService")
@@ -58,6 +72,21 @@ local function Create(instance, properties)
     return obj
 end
 
+-- Apply a simple hover animation to a TextButton
+local function applyHoverAnimation(button)
+    if not button:IsA("TextButton") then return end
+    local originalColor = button.BackgroundColor3
+    local hoverColor = originalColor:lerp(Color3.new(1, 1, 1), 0.1)
+    local tweenInfo = TweenInfo.new(0.15)
+    
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, tweenInfo, { BackgroundColor3 = hoverColor }):Play()
+    end)
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, tweenInfo, { BackgroundColor3 = originalColor }):Play()
+    end)
+end
+
 -- Only allow dragging from the title bar.
 local function MakeDraggable(dragArea, frame)
     local dragging = false
@@ -78,7 +107,6 @@ local function MakeDraggable(dragArea, frame)
             end)
         end
     end)
-
     dragArea.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
@@ -95,7 +123,6 @@ end
 ----------------------------------------------------------------
 -- Core objects
 ----------------------------------------------------------------
-
 -- Window Object
 local Window = {}
 Window.__index = Window
@@ -118,7 +145,6 @@ function Window:CreateTab(name)
         container.CanvasSize = UDim2.new(0, container.AbsoluteSize.X, 0, layout.AbsoluteContentSize.Y)
     end)
     container.Visible = (#self.Tabs == 0)  -- first tab visible
-
     local tab = {
         Name = name,
         Sections = {},
@@ -168,6 +194,9 @@ function Window:CreateTab(name)
                         Parent = sectionFrame,
                     })
                     Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = btn })
+                    
+                    applyHoverAnimation(btn)
+                    
                     btn.MouseButton1Click:Connect(function()
                         toggle.State = not toggle.State
                         btn.Text = text .. (toggle.State and "   [ON]" or "   [OFF]")
@@ -257,6 +286,9 @@ function Window:CreateTab(name)
                         Parent = keybindFrame,
                     })
                     Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = btn })
+                    
+                    applyHoverAnimation(btn)
+                    
                     btn.MouseButton1Click:Connect(function()
                         label.Text = text .. " [Press a key]"
                         local keyConnection
@@ -277,12 +309,7 @@ function Window:CreateTab(name)
                     end)
                     keybindFrame:SetAttribute("_configType", "keybind")
                     table.insert(self.Elements, keybindFrame)
-                    SokaHubUI.ActiveKeybinds[keybindFrame] = {
-                        key = key,
-                        callback = callback,
-                    }
-                end
-                
+                    SokaHubUI
                 function section:NewButton(text, desc, callback)
                     local btn = Create("TextButton", {
                         Size = UDim2.new(1, -10, 0, 30),
@@ -294,6 +321,9 @@ function Window:CreateTab(name)
                         Parent = sectionFrame,
                     })
                     Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = btn })
+                    
+                    applyHoverAnimation(btn)
+                    
                     btn.MouseButton1Click:Connect(function()
                         if callback then
                             callback()
@@ -342,6 +372,9 @@ function Window:CreateTab(name)
                         Parent = pickerFrame,
                     })
                     Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = colorBox })
+                    
+                    applyHoverAnimation(colorBox)
+                    
                     colorBox.MouseButton1Click:Connect(function()
                         currentIndex = (currentIndex % #colorOptions) + 1
                         local newColor = colorOptions[currentIndex]
@@ -351,14 +384,14 @@ function Window:CreateTab(name)
                         end
                         pickerFrame:SetAttribute("_configValue", Color3ToHex(newColor))
                     end)
+                    pickerFrame:SetAttribute("_configType", "colorPicker")
                     table.insert(self.Elements, pickerFrame)
                 end
-
+                
                 return section
             end,  -- End CreateSection
         },
     })
-
     table.insert(self.Tabs, tab)
     if self._tabBar then
         self._tabBar:Refresh(self.Tabs)
@@ -369,7 +402,6 @@ end
 ----------------------------------------------------------------
 -- Create a tab bar UI for switching tabs.
 ----------------------------------------------------------------
-
 function Window:CreateTabBar()
     local tabBar = Create("Frame", {
         Name = "TabBar",
@@ -379,6 +411,7 @@ function Window:CreateTabBar()
         Parent = self._Main,
     })
     Create("UICorner", { CornerRadius = UDim.new(0, 10), Parent = tabBar })
+
     function tabBar:Refresh(tabs)
         for _, child in ipairs(self:GetChildren()) do
             if child:IsA("GuiObject") then
@@ -397,6 +430,9 @@ function Window:CreateTabBar()
                 Parent = self,
             })
             Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = btn })
+            
+            applyHoverAnimation(btn)
+            
             btn.MouseButton1Click:Connect(function()
                 for _, otherTab in ipairs(tabs) do
                     otherTab._container.Visible = false
@@ -482,7 +518,7 @@ function Window:LoadConfig(configName)
                         if cfg.type == "toggle" then
                             element.Text = element.Text:gsub("%[.-%]", cfg.value and "[ON]" or "[OFF]")
                         elseif cfg.type == "slider" then
-                            local percent = (cfg.value or 0) / 100  -- Assuming max=100 for this demo
+                            local percent = (cfg.value or 0) / 100  -- Assuming max=100 for demo
                             local slider = element:FindFirstChildWhichIsA("Frame")
                             if slider then
                                 slider.Size = UDim2.new(percent, 0, 0, 10)
@@ -508,7 +544,6 @@ end
 ----------------------------------------------------------------
 -- Library Entry: Create a new Window
 ----------------------------------------------------------------
-
 function SokaHubUI:CreateWindow(title)
     local selfWindow = setmetatable({ Tabs = {} }, Window)
     
