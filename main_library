@@ -12,7 +12,6 @@
            ▪ SaveConfig and LoadConfig methods on the Window iterate over each section’s elements.
            ▪ A Settings tab that includes a dropdown for selecting configs, a Save Config button, a ToggleUI button,
              and a Change Theme button.
-
     Further ideas:
       • Add animations (UI tweening) when a button is hovered.
       • Add notifications for key events.
@@ -21,6 +20,7 @@
 --]]
 
 local SokaHubUI = {}
+
 SokaHubUI.Configs = {}  -- table to store configuration presets
 SokaHubUI.ActiveKeybinds = SokaHubUI.ActiveKeybinds or {}  -- table to store keybinds for persistent listening
 
@@ -78,6 +78,7 @@ local function MakeDraggable(dragArea, frame)
             end)
         end
     end)
+
     dragArea.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
@@ -178,7 +179,7 @@ function Window:CreateTab(name)
                     btn:SetAttribute("_configType", "toggle")
                     table.insert(self.Elements, btn)
                 end
-
+                
                 function section:NewSlider(text, desc, max, min, callback, default)
                     local defaultVal = default or min or 0
                     local sliderFrame = Create("Frame", {
@@ -229,7 +230,7 @@ function Window:CreateTab(name)
                     sliderFrame:SetAttribute("_configType", "slider")
                     table.insert(self.Elements, sliderFrame)
                 end
-
+                
                 function section:NewKeybind(text, desc, key, callback)
                     local keybindFrame = Create("Frame", {
                         Size = UDim2.new(1, -10, 0, 30),
@@ -281,7 +282,7 @@ function Window:CreateTab(name)
                         callback = callback,
                     }
                 end
-
+                
                 function section:NewButton(text, desc, callback)
                     local btn = Create("TextButton", {
                         Size = UDim2.new(1, -10, 0, 30),
@@ -301,7 +302,7 @@ function Window:CreateTab(name)
                     btn:SetAttribute("_configType", "button")
                     table.insert(self.Elements, btn)
                 end
-
+                
                 function section:NewColorPicker(text, desc, defaultColor, callback)
                     local colorOptions = {
                         Color3.fromRGB(255, 0, 0),
@@ -357,6 +358,7 @@ function Window:CreateTab(name)
             end,  -- End CreateSection
         },
     })
+
     table.insert(self.Tabs, tab)
     if self._tabBar then
         self._tabBar:Refresh(self.Tabs)
@@ -387,9 +389,7 @@ function Window:CreateTabBar()
             local btn = Create("TextButton", {
                 Name = tab.Name,
                 Text = tab.Name,
-                Size = UDim2.new(
-    -- continue the Size property definition:
-                    Size = UDim2.new(1/#tabs, 0, 1, 0),
+                Size = UDim2.new(1/#tabs, 0, 1, 0),
                 BackgroundColor3 = Color3.fromRGB(50,50,50),
                 TextColor3 = Color3.new(1,1,1),
                 Font = Enum.Font.SourceSans,
