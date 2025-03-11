@@ -389,23 +389,14 @@ function Window:CreateTabBar()
                 Text = tab.Name,
                 Size = UDim2.new(
     -- continue the Size property definition:
-    Size = UDim2.new(1/#tabs, 0, 1, 0),
-    BackgroundColor3 = Color3.fromRGB(50,50,50),
-    TextColor3 = Color3.new(1,1,1),
-    Font = Enum.Font.SourceSans,
-    TextSize = 18,
-    Parent = self,
-})
-Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = btn })
-btn.MouseButton1Click:Connect(function()
-    for _, otherTab in ipairs(tabs) do
-        otherTab._container.Visible = false
-    end
-    tab._container.Visible = true
-end)
-function Window:ToggleUI()
-    self._Main.Visible = not self._Main.Visible
-end
+                    Size = UDim2.new(1/#tabs, 0, 1, 0),
+                BackgroundColor3 = Color3.fromRGB(50,50,50),
+                TextColor3 = Color3.new(1,1,1),
+                Font = Enum.Font.SourceSans,
+                TextSize = 18,
+                Parent = self,
+            })
+            Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = btn })
             btn.MouseButton1Click:Connect(function()
                 for _, otherTab in ipairs(tabs) do
                     otherTab._container.Visible = false
@@ -420,6 +411,11 @@ end
 ----------------------------------------------------------------
 -- Additional Window Methods
 ----------------------------------------------------------------
+
+-- Toggle the entire UI's visibility (using Enabled so it doesn't remove it from CoreGui)
+function Window:ToggleUI()
+    self._Main.Enabled = not self._Main.Enabled
+end
 
 -- Change the theme for all UI elements
 function Window:ChangeTheme(newTheme)
@@ -507,11 +503,6 @@ function Window:LoadConfig(configName)
             end
         end
     end
-end
-
--- Toggle the entire UI's visibility
-function Window:ToggleUI()
-    self._Main.Enabled = not self._Main.Enabled
 end
 
 ----------------------------------------------------------------
