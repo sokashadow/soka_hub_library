@@ -1,28 +1,151 @@
-local SokaHubUI = require(script.Parent.SokaHubUI) -- Adjust the path accordingly
+-- Simple UI Library
+local SimpleUI = {}
+SimpleUI.__index = SimpleUI
 
--- Create a new window
-local window = SokaHubUI:CreateWindow("My SokaHub")
+function SimpleUI.new(title)
+    local self = setmetatable({}, SimpleUI)
+    
+    -- Create ScreenGui
+    self.screenGui = Instance.new("ScreenGui")
+    self.screenGui.Name = title
+    self.screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
--- Create a new tab
-local tab = window:CreateTab("Main Tab")
+    -- Create Main Frame
+    self.mainFrame = Instance.new("Frame")
+    self.mainFrame.Size = UDim2.new(0.5, 0, 0.5, 0)
+    self.mainFrame.Position = UDim2.new(0.25, 0, 0.25, 0)
+    self.mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    self.mainFrame.Parent = self.screenGui
 
--- Create a section within the tab
-local section = tab:CreateSection("Controls")
+    -- Create Title
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, 0, 0.1, 0)
+    titleLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.Text = title
+    titleLabel.Parent = self.mainFrame
 
--- Add a button to the section
-section:NewButton("Click Me", "This is a button", function()
-    print("Button clicked!")
-end)
+    self.tabs = {}
 
--- Add a toggle to the section
-section:NewToggle("Enable Feature", "Toggle this feature", function(state)
-    print("Feature enabled:", state)
-end)
+    return self
+end
 
--- Add a slider to the section
-section:NewSlider("Adjust Value", "Slide to adjust", 100, 0, function(value)
-    print("Slider value:", value)
-end, 50) -- Default value set to 50
+function SimpleUI:CreateTab(tabName)
+    local tab = {}
+    tab.name = tabName
+    tab.frame = Instance.new("Frame")
+    tab.frame.Size = UDim2.new(1, 0, 0.9, 0)
+    tab.frame.Position = UDim2.new(0, 0, 0.1, 0)
+    tab.frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    tab.frame.Parent = self.mainFrame
 
--- Show the UI
-window:ToggleUI()
+    -- Create Tab Button
+    local tabButton = Instance.new("TextButton")
+    tabButton.Size = UDim2.new(0.1, 0, 0.1, 0)
+    tabButton.Position = UDim2.new(#self.tabs * 0.1, 0, 0, 0)
+    tabButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    tabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tabButton.Text = tabName
+    tabButton.Parent = self.mainFrame
+
+    tabButton.MouseButton1Click:Connect(function()
+        for _, t in pairs(self.tabs) do
+            t.frame.Visible = false
+        end
+        tab.frame.Visible = true
+    end)
+
+    table.insert(self.tabs, tab)
+    tab.frame.Visible = false -- Hide tab initially
+
+    return tab
+end
+
+function SimpleUI:CreateSection(tab, sectionName)
+    local section = Instance.new("Frame")
+    section.Size = UDim2.new(1, 0, 0.2, 0)
+    section.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    section.Parent = tab.frame
+
+    local sectionLabel = Instance.new("TextLabel")
+    sectionLabel.Size = UDim2.new(1, 0, 0.2, 0)
+    sectionLabel.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    sectionLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    sectionLabel.Text = sectionName
+    sectionLabel.Parent = section
+
+    return section
+end
+
+function SimpleUI:NewButton(tab, section, buttonName, callback)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0.8, 0, 0.1, 0)
+    button.Position = UDim2.new(0.1, 0, #section:GetChildren() * 0.1, 0)
+    button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.Text = buttonName
+    button.Parent = section
+
+    button.MouseButton1Click:Connect(callback)
+end
+
+function SimpleUI:NewSlider(tab, section, sliderName, max, min, callback)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Size = UDim2.new(0.8, 0, 0.1, 0)
+    sliderFrame.Position = UDim2.new(0.1, 0, #section:GetChildren() * 0.1, 0)
+    sliderFrame.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    sliderFrame.Parent = section
+
+    local sliderLabel = Instance.new("TextLabel")
+    sliderLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    sliderLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    sliderLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+    sliderLabel.Text = sliderName .. ": " .. min
+    sliderLabel.Parent = sliderFrame
+
+    local slider = Instance.new("TextButton")
+    slider.Size = UDim2.new(1, 0, 0.5, 0)
+    slider.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    slider.Parent = sliderFrame
+
+    slider.MouseButton1Down:Connect(function()
+        local function updateSlider(input)
+            local newValue = math.clamp((input.Position.X - slider.AbsolutePosition.X) / slider.AbsoluteSize.X * (max - min) + min, min, max)
+            sliderLabel.Text = sliderName .. ": " .. math.floor(newValue)
+            callback(newValue)
+        end
+
+        local connection
+        connection = UserInputService.InputChanged:Connect(updateSlider)
+
+        UserInputService.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                connection:Disconnect()
+            end
+        end)
+    end)
+end
+
+function SimpleUI:NewToggle(tab, section, toggleName, callback)
+    local toggleFrame = Instance.new("Frame")
+    toggleFrame.Size = UDim2.new(0.8, 0, 0.1, 0)
+    toggleFrame.Position = UDim2.new(0.1, 0, #section:GetChildren() * 0.1, 0)
+    toggleFrame.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    toggleFrame.Parent = section
+
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Size = UDim2.new(0.5, 0, 1, 0)
+    toggleButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggleButton.Text = toggleName
+    toggleButton.Parent = toggleFrame
+
+    local isToggled = false
+    toggleButton.MouseButton1Click:Connect(function()
+        isToggled = not isToggled
+        toggleButton.BackgroundColor3 = isToggled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(100, 100, 100)
+        callback(isToggled)
+    end)
+end
+
+return SimpleUI
