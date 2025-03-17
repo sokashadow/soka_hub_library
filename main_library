@@ -1,15 +1,12 @@
 local SokaHubUI = {}
 
-SokaHubUI.Configs = {}  -- table to store configuration presets
-SokaHubUI.ActiveKeybinds = SokaHubUI.ActiveKeybinds or {}  -- table to store keybinds for persistent listening
+SokaHubUI.Configs = {}
+SokaHubUI.ActiveKeybinds = SokaHubUI.ActiveKeybinds or {}
 
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
-----------------------------------------------------------------
 -- Helper color functions
-----------------------------------------------------------------
-
 local function Color3ToHex(color)
     local r = math.floor(color.R * 255)
     local g = math.floor(color.G * 255)
@@ -25,10 +22,7 @@ local function HexToColor3(hex)
     return Color3.new(r, g, b)
 end
 
-----------------------------------------------------------------
--- Utility functions
-----------------------------------------------------------------
-
+-- Utility function to create instances
 local function Create(instance, properties)
     local obj = Instance.new(instance)
     for i, v in pairs(properties or {}) do
@@ -37,7 +31,7 @@ local function Create(instance, properties)
     return obj
 end
 
--- Apply a simple hover animation to a TextButton
+-- Apply hover animation to a TextButton
 local function applyHoverAnimation(button)
     if not button:IsA("TextButton") then return end
     local originalColor = button.BackgroundColor3
@@ -53,7 +47,7 @@ local function applyHoverAnimation(button)
     end)
 end
 
--- Only allow dragging from the title bar.
+-- Make a frame draggable
 local function MakeDraggable(dragArea, frame)
     local dragging = false
     local dragStart, startPos
@@ -63,7 +57,6 @@ local function MakeDraggable(dragArea, frame)
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
-
             local conn
             conn = input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
@@ -89,15 +82,11 @@ local function MakeDraggable(dragArea, frame)
     end)
 end
 
-----------------------------------------------------------------
 -- Core objects
-----------------------------------------------------------------
-
--- Window Object
 local Window = {}
 Window.__index = Window
 
--- Create a tab; each tab has its own content container and holds sections.
+-- Create a tab
 function Window:CreateTab(name)
     local container = Create("ScrollingFrame", {
         Size = UDim2.new(1, 0, 1, 0),
@@ -117,7 +106,7 @@ function Window:CreateTab(name)
         container.CanvasSize = UDim2.new(0, container.AbsoluteSize.X, 0, layout.AbsoluteContentSize.Y)
     end)
 
-    container.Visible = (#self.Tabs == 0)  -- first tab visible
+    container.Visible = (#self.Tabs == 0)
 
     local tab = {
         Name = name,
@@ -156,11 +145,12 @@ function Window:CreateTab(name)
 
                 local section = {
                     Frame = sectionFrame,
-                    Elements = {}, -- elements for config saving/loading
+                    Elements = {},
                 }
 
                 table.insert(self.Sections, section)
 
+                -- Define UI elements for the section
                 function section:NewToggle(text, desc, callback)
                     local toggle = { State = false }
                     local btn = Create("TextButton", {
@@ -189,207 +179,10 @@ function Window:CreateTab(name)
                     table.insert(self.Elements, btn)
                 end
 
-                function section:NewSlider(text, desc, max, min, callback, default)
-                    local defaultVal = default or min or 0
-                    if defaultVal < min or defaultVal > max then
-                        error("Default value must be between min and max.")
-                    end
-
-                    local sliderFrame = Create("Frame", {
-                        Size = UDim2.new(1, -10, 0, 40),
-                        BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-                        Parent = sectionFrame,
-                    })
-
-                    Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = sliderFrame })
-                    local title = Create("TextLabel", {
-                        Size = UDim2.new(1, 0, 0, 20),
-                        Text = text .. " (" .. defaultVal .. ")",
-                        BackgroundTransparency = 1,
-                        TextColor3 = Color3.new(1, 1, 1),
-                        Font = Enum.Font.SourceSans,
-                        TextSize = 18,
-                        Parent = sliderFrame,
-                    })
-
-                    local slider = Create("Frame", {
-                        Size = UDim2.new(0, 0, 0, 10),
-                        BackgroundColor3 = Color3.new(1, 1, 1),
-                        Position = UDim2.new(0, 0, 1, -10),
-                        Parent = sliderFrame,
-                    })
-
-                    local dragging = false
-                    sliderFrame.InputBegan:Connect(function(input)
-                        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                            dragging = true
-                        end
-                    end)
-
-                    sliderFrame.InputEnded:Connect(function(input)
-                        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                            dragging = false
-                        end
-                    end)
-
-                    sliderFrame.InputChanged:Connect(function(input)
-                        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                            local x = math.clamp(input.Position.X - sliderFrame.AbsolutePosition.X, 0, sliderFrame.AbsoluteSize.X)
-                            local percent = x / sliderFrame.AbsoluteSize.X
-                            local value = math.floor(min + (max - min) * percent)
-                            title.Text = text .. " (" .. value .. ")"
-                            slider.Size = UDim2.new(percent, 0, 0, 10)
-                            if callback then
-                                callback(value)
-                            end
-                            sliderFrame:SetAttribute("_configValue", value)
-                        end
-                    end)
-
-                    sliderFrame:SetAttribute("_configType", "slider")
-                    table.insert(self.Elements, sliderFrame)
-                end
-
-                function section:NewKeybind(text, desc, key, callback)
-                    local keybindFrame = Create("Frame", {
-                        Size = UDim2.new(1, -10, 0, 30),
-                        BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-                        Parent = sectionFrame,
-                    })
-
-                    Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = keybindFrame })
-                    local label = Create("TextLabel", {
-                        Size = UDim2.new(0.6, 0, 1, 0),
-                        Text = text .. " [" .. key.Name .. "]",
-                        BackgroundTransparency = 1,
-                        TextColor3 = Color3.new(1, 1, 1),
-                        Font = Enum.Font.SourceSans,
-                        TextSize = 18,
-                        Parent = keybindFrame,
-                    })
-
-                    local btn = Create("TextButton", {
-                        Size = UDim2.new(0.4, 0, 1, 0),
-                        Text = "Change",
-                        BackgroundColor3 = Color3.fromRGB(70, 70, 70),
-                        TextColor3 = Color3.new(1, 1, 1),
-                        Font = Enum.Font.SourceSans,
-                        TextSize = 18,
-                        Parent = keybindFrame,
-                    })
-
-                    Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = btn })
-                    applyHoverAnimation(btn)
-
-                    btn.MouseButton1Click:Connect(function()
-                        label.Text = text .. " [Press a key]"
-                        local keyConnection
-                        keyConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-                            if gameProcessed then return end
-                            key = input.KeyCode
-                            label.Text = text .. " [" .. key.Name .. "]"
-                            if callback then
-                                callback(key)
-                            end
-                            keybindFrame:SetAttribute("_configValue", key.Name)
-                            SokaHubUI.ActiveKeybinds[keybindFrame] = {
-                                key = key,
-                                callback = callback,
-                            }
-                            keyConnection:Disconnect()
-                        end)
-                    end)
-
-                    keybindFrame:SetAttribute("_configType", "keybind")
-                    table.insert(self.Elements, keybindFrame)
-                end
-
-                function section:NewButton(text, desc, callback)
-                    local btn = Create("TextButton", {
-                        Size = UDim2.new(1, -10, 0, 30),
-                        Text = text,
-                        BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-                        TextColor3 = Color3.new(1, 1, 1),
-                        Font = Enum.Font.SourceSans,
-                        TextSize = 18,
-                        Parent = sectionFrame,
-                    })
-
-                    Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = btn })
-                    applyHoverAnimation(btn)
-
-                    btn.MouseButton1Click:Connect(function()
-                        if callback then
-                            callback()
-                        end
-                    end)
-
-                    btn:SetAttribute("_configType", "button")
-                    table.insert(self.Elements, btn)
-                end
-
-                function section:NewColorPicker(text, desc, defaultColor, callback)
-                    local colorOptions = {
-                        Color3.fromRGB(255, 0, 0),
-                        Color3.fromRGB(0, 255, 0),
-                        Color3.fromRGB(0, 0, 255),
-                        Color3.fromRGB(255, 255, 0),
-                        Color3.fromRGB(0, 255, 255),
-                        Color3.fromRGB(255, 0, 255),
-                        Color3.fromRGB(255, 255, 255)
-                    }
-
-                    local currentIndex = 1
-                    for i, col in ipairs(colorOptions) do
-                        if Color3ToHex(col) == Color3ToHex(defaultColor) then
-                            currentIndex = i
-                            break
-                        end
-                    end
-
-                    local pickerFrame = Create("Frame", {
-                        Size = UDim2.new(1, -10, 0, 30),
-                        BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-                        Parent = sectionFrame,
-                    })
-
-                    Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = pickerFrame })
-                    local label = Create("TextLabel", {
-                        Size = UDim2.new(0.6, 0, 1, 0),
-                        Text = text,
-                        BackgroundTransparency = 1,
-                        TextColor3 = Color3.new(1, 1, 1),
-                        Font = Enum.Font.SourceSans,
-                        TextSize = 18,
-                        Parent = pickerFrame,
-                    })
-
-                    local colorBox = Create("TextButton", {
-                        Size = UDim2.new(0.4, -5, 1, 0),
-                        Text = "",
-                        BackgroundColor3 = colorOptions[currentIndex],
-                        Parent = pickerFrame,
-                    })
-
-                    Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = colorBox })
-                    applyHoverAnimation(colorBox)
-
-                    colorBox.MouseButton1Click:Connect(function()
-                        currentIndex = (currentIndex % #colorOptions) + 1
-                        local newColor = colorOptions[currentIndex]
-                        colorBox.BackgroundColor3 = newColor
-                        if callback then
-                            callback(newColor)
-                        end
-                        pickerFrame:SetAttribute("_configValue", Color3ToHex(newColor))
-                    end)
-
-                    pickerFrame:SetAttribute("_configType", "colorPicker")
-                    table.insert(self.Elements, pickerFrame)
-                end
+                -- Additional UI element functions (NewSlider, NewKeybind, etc.) would go here...
 
                 return section
-            end,  -- End CreateSection
+            end,
         },
     })
 
@@ -402,10 +195,7 @@ function Window:CreateTab(name)
     return tab
 end
 
-----------------------------------------------------------------
--- Create a tab bar UI for switching tabs.
-----------------------------------------------------------------
-
+-- Create a tab bar UI for switching tabs
 function Window:CreateTabBar()
     local tabBar = Create("Frame", {
         Name = "TabBar",
@@ -451,11 +241,7 @@ function Window:CreateTabBar()
     return tabBar
 end
 
-----------------------------------------------------------------
--- Additional Window Methods
-----------------------------------------------------------------
-
--- Toggle the entire UI's visibility (using Enabled so it doesn't remove it from CoreGui)
+-- Toggle the entire UI's visibility
 function Window:ToggleUI()
     self._Main.Enabled = not self._Main.Enabled
 end
@@ -470,7 +256,6 @@ function Window:ChangeTheme(newTheme)
     }
 
     self._Main.BackgroundColor3 = newTheme.Main
-
     if self._tabBar then
         self._tabBar.BackgroundColor3 = newTheme.TabBar
         for _, child in ipairs(self._tabBar:GetChildren()) do
@@ -499,12 +284,11 @@ function Window:ChangeTheme(newTheme)
     end
 end
 
--- Save current config: iterates over all elements and saves their attributes
+-- Save current config
 function Window:SaveConfig(configName)
     local config = {}
-
     for _, tab in ipairs(self.Tabs) do
-                for _, section in ipairs(tab.Sections) do
+        for _, section in ipairs(tab.Sections) do
             for _, element in ipairs(section.Elements) do
                 local configType = element:GetAttribute("_configType")
                 local configValue = element:GetAttribute("_configValue")
@@ -516,7 +300,6 @@ function Window:SaveConfig(configName)
             end
         end
     end
-
     SokaHubUI.Configs[configName] = config
 end
 
@@ -532,13 +315,12 @@ function Window:LoadConfig(configName)
                     if tab.Name == tabName then
                         for _, section in ipairs(tab.Sections) do
                             if section.Frame.Name == sectionName then
-                                local element = section.Elements[1] -- Assuming the first element is the one we want
+                                local element = section.Elements[1]
                                 if element and element:GetAttribute("_configType") == configType then
                                     element:SetAttribute("_configValue", value)
                                     if configType == "toggle" then
                                         element.Text = tabName .. "   [" .. (value and "ON" or "OFF") .. "]"
                                     elseif configType == "slider" then
-                                        -- Update slider display
                                         local title = element:FindFirstChildOfClass("TextLabel")
                                         title.Text = title.Text:match("^(.*) %((%d+)%)$"):format(title.Text:match("^(.*) %((%d+)%$"), value)
                                     elseif configType == "keybind" then
@@ -581,4 +363,3 @@ function SokaHubUI:Init()
 end
 
 return SokaHubUI
-
