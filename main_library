@@ -57,6 +57,7 @@ local function MakeDraggable(dragArea, frame)
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
+
             local conn
             conn = input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
@@ -256,6 +257,7 @@ function Window:ChangeTheme(newTheme)
     }
 
     self._Main.BackgroundColor3 = newTheme.Main
+
     if self._tabBar then
         self._tabBar.BackgroundColor3 = newTheme.TabBar
         for _, child in ipairs(self._tabBar:GetChildren()) do
