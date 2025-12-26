@@ -1,367 +1,452 @@
+--========================================--
+--  SOKA HUB UI LIBRARY (FULLY FIXED)
+--========================================--
+
 local SokaHubUI = {}
-
 SokaHubUI.Configs = {}
-SokaHubUI.ActiveKeybinds = SokaHubUI.ActiveKeybinds or {}
+SokaHubUI.ActiveKeybinds = {}
 
+local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
--- Helper color functions
-local function Color3ToHex(color)
-    local r = math.floor(color.R * 255)
-    local g = math.floor(color.G * 255)
-    local b = math.floor(color.B * 255)
-    return string.format("%02X%02X%02X", r, g, b)
+--========== HELPERS ==========--
+
+local function Create(class, props)
+	local obj = Instance.new(class)
+	for i, v in pairs(props) do obj[i] = v end
+	return obj
 end
 
-local function HexToColor3(hex)
-    hex = hex:gsub("#", "")
-    local r = tonumber(hex:sub(1, 2), 16) / 255
-    local g = tonumber(hex:sub(3, 4), 16) / 255
-    local b = tonumber(hex:sub(5, 6), 16) / 255
-    return Color3.new(r, g, b)
-end
-
--- Utility function to create instances
-local function Create(instance, properties)
-    local obj = Instance.new(instance)
-    for i, v in pairs(properties or {}) do
-        obj[i] = v
-    end
-    return obj
-end
-
--- Apply hover animation to a TextButton
 local function applyHoverAnimation(button)
-    if not button:IsA("TextButton") then return end
-    local originalColor = button.BackgroundColor3
-    local hoverColor = originalColor:lerp(Color3.new(1, 1, 1), 0.1)
-    local tweenInfo = TweenInfo.new(0.15)
+	if not button:IsA("TextButton") then return end
 
-    button.MouseEnter:Connect(function()
-        TweenService:Create(button, tweenInfo, { BackgroundColor3 = hoverColor }):Play()
-    end)
+	local original = button.BackgroundColor3
+	local hover = original:lerp(Color3.new(1,1,1), 0.12)
+	local TI = TweenInfo.new(0.14)
 
-    button.MouseLeave:Connect(function()
-        TweenService:Create(button, tweenInfo, { BackgroundColor3 = originalColor }):Play()
-    end)
+	button.MouseEnter:Connect(function()
+		TweenService:Create(button, TI, {BackgroundColor3 = hover}):Play()
+	end)
+
+	button.MouseLeave:Connect(function()
+		TweenService:Create(button, TI, {BackgroundColor3 = original}):Play()
+	end)
 end
 
--- Make a frame draggable
-local function MakeDraggable(dragArea, frame)
-    local dragging = false
-    local dragStart, startPos
+local function MakeDraggable(topbar, frame)
+	local dragging = false
+	local dragStart, startPos
 
-    dragArea.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
+	topbar.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = true
+			dragStart = input.Position
+			startPos = frame.Position
+		end
+	end)
 
-            local conn
-            conn = input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                    if conn then
-                        conn:Disconnect()
-                    end
-                end
-            end)
-        end
-    end)
+	topbar.InputChanged:Connect(function(input)
+		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+			local delta = input.Position - dragStart
+			frame.Position = UDim2.new(
+				startPos.X.Scale, startPos.X.Offset + delta.X,
+				startPos.Y.Scale, startPos.Y.Offset + delta.Y
+			)
+		end
+	end)
 
-    dragArea.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragging = false
+		end
+	end)
 end
 
--- Core objects
+--========== WINDOW CREATION ==========--
+
 local Window = {}
 Window.__index = Window
 
--- Create a tab
+function SokaHubUI:Init(name)
+	local Screen = Create("ScreenGui", {
+		Name = name or "SokaHubUI",
+		Parent = Players.LocalPlayer:WaitForChild("PlayerGui"),
+		ResetOnSpawn = false
+	})
+
+	local Main = Create("Frame", {
+		Size = UDim2.new(0, 550, 0, 350),
+		Position = UDim2.new(0.5, -275, 0.5, -175),
+		BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+		BorderSizePixel = 0,
+		Parent = Screen
+	})
+
+	Create("UICorner", {CornerRadius = UDim.new(0, 10), Parent = Main})
+
+	local Top = Create("Frame", {
+		Size = UDim2.new(1, 0, 0, 40),
+		BackgroundColor3 = Color3.fromRGB(25, 25, 25),
+		Parent = Main
+	})
+	Create("UICorner", {CornerRadius = UDim.new(0, 10), Parent = Top})
+
+	local Title = Create("TextLabel", {
+		Size = UDim2.new(1, -10, 1, 0),
+		Position = UDim2.new(0, 10, 0, 0),
+		Text = name or "Soka Hub",
+		BackgroundTransparency = 1,
+		Font = Enum.Font.SourceSansBold,
+		TextColor3 = Color3.new(1, 1, 1),
+		TextSize = 22,
+		Parent = Top
+	})
+
+	local TabBar = Create("Frame", {
+		Size = UDim2.new(1, 0, 0, 35),
+		Position = UDim2.new(0, 0, 0, 40),
+		BackgroundColor3 = Color3.fromRGB(35, 35, 35),
+		Parent = Main
+	})
+
+	local Content = Create("Frame", {
+		Size = UDim2.new(1, 0, 1, -75),
+		Position = UDim2.new(0, 0, 0, 75),
+		BackgroundColor3 = Color3.fromRGB(30, 30, 30),
+		Parent = Main
+	})
+
+	Create("UICorner", {CornerRadius = UDim.new(0, 10), Parent = Content})
+
+	MakeDraggable(Top, Main)
+
+	local self = setmetatable({}, Window)
+	self.Main = Main
+	self.TabBar = TabBar
+	self.Content = Content
+	self.Tabs = {}
+
+	return self
+end
+
+--========== TABS ==========--
+
 function Window:CreateTab(name)
-    local container = Create("ScrollingFrame", {
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundTransparency = 1,
-        ScrollBarThickness = 6,
-        Parent = self._content,
-        CanvasSize = UDim2.new(0, 0, 0, 0),
-    })
+	local TabButton = Create("TextButton", {
+		Size = UDim2.new(0, 120, 1, 0),
+		Text = name,
+		Font = Enum.Font.SourceSans,
+		TextSize = 18,
+		BackgroundColor3 = Color3.fromRGB(50, 50, 50),
+		TextColor3 = Color3.new(1, 1, 1),
+		Parent = self.TabBar
+	})
+	Create("UICorner", {CornerRadius = UDim.new(0, 6), Parent = TabButton})
+	applyHoverAnimation(TabButton)
 
-    local layout = Create("UIListLayout", {
-        Parent = container,
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        Padding = UDim.new(0, 5),
-    })
+	local TabFrame = Create("ScrollingFrame", {
+		Size = UDim2.new(1, -10, 1, -10),
+		Position = UDim2.new(0, 5, 0, 5),
+		BackgroundTransparency = 1,
+		Parent = self.Content,
+		ScrollBarThickness = 6,
+		CanvasSize = UDim2.new(0, 0, 0, 0),
+		Visible = false
+	})
 
-    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        container.CanvasSize = UDim2.new(0, container.AbsoluteSize.X, 0, layout.AbsoluteContentSize.Y)
-    end)
+	local layout = Create("UIListLayout", {
+		Parent = TabFrame,
+		Padding = UDim.new(0, 8),
+		SortOrder = Enum.SortOrder.LayoutOrder
+	})
+	layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		TabFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
+	end)
 
-    container.Visible = (#self.Tabs == 0)
+	local tab = {
+		Name = name,
+		Button = TabButton,
+		Frame = TabFrame,
+		Sections = {}
+	}
 
-    local tab = {
-        Name = name,
-        Sections = {},
-        _container = container,
-    }
+	table.insert(self.Tabs, tab)
 
-    setmetatable(tab, {
-        __index = {
-            CreateSection = function(self, sectionName)
-                local sectionFrame = Create("Frame", {
-                    Size = UDim2.new(1, -10, 0, 150),
-                    BackgroundColor3 = Color3.fromRGB(30, 30, 30),
-                    BorderSizePixel = 0,
-                    Name = sectionName,
-                    Parent = self._container,
-                })
+	-- Switch tab on click
+	TabButton.MouseButton1Click:Connect(function()
+		for _, t in pairs(self.Tabs) do
+			t.Frame.Visible = false
+		end
+		TabFrame.Visible = true
+	end)
 
-                Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = sectionFrame })
+	if #self.Tabs == 1 then
+		TabFrame.Visible = true
+	end
 
-                local sectionLabel = Create("TextLabel", {
-                    Size = UDim2.new(1, 0, 0, 30),
-                    Text = sectionName,
-                    BackgroundTransparency = 1,
-                    TextColor3 = Color3.new(1, 1, 1),
-                    Font = Enum.Font.SourceSansBold,
-                    TextSize = 20,
-                    Parent = sectionFrame,
-                })
-
-                local layout = Create("UIListLayout", {
-                    SortOrder = Enum.SortOrder.LayoutOrder,
-                    Parent = sectionFrame,
-                    Padding = UDim.new(0, 5),
-                })
-
-                local section = {
-                    Frame = sectionFrame,
-                    Elements = {},
-                }
-
-                table.insert(self.Sections, section)
-
-                -- Define UI elements for the section
-                function section:NewToggle(text, desc, callback)
-                    local toggle = { State = false }
-                    local btn = Create("TextButton", {
-                        Size = UDim2.new(1, -10, 0, 30),
-                        Text = text .. "   [OFF]",
-                        BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-                        TextColor3 = Color3.new(1, 1, 1),
-                        Font = Enum.Font.SourceSans,
-                        TextSize = 18,
-                        Parent = sectionFrame,
-                    })
-
-                    Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = btn })
-                    applyHoverAnimation(btn)
-
-                    btn.MouseButton1Click:Connect(function()
-                        toggle.State = not toggle.State
-                        btn.Text = text .. (toggle.State and "   [ON]" or "   [OFF]")
-                        if callback then
-                            callback(toggle.State)
-                        end
-                        btn:SetAttribute("_configValue", toggle.State)
-                    end)
-
-                    btn:SetAttribute("_configType", "toggle")
-                    table.insert(self.Elements, btn)
-                end
-
-                -- Additional UI element functions (NewSlider, NewKeybind, etc.) would go here...
-
-                return section
-            end,
-        },
-    })
-
-    table.insert(self.Tabs, tab)
-
-    if self._tabBar then
-        self._tabBar:Refresh(self.Tabs)
-    end
-
-    return tab
+	return tab
 end
 
--- Create a tab bar UI for switching tabs
-function Window:CreateTabBar()
-    local tabBar = Create("Frame", {
-        Name = "TabBar",
-        Size = UDim2.new(1, 0, 0, 40),
-        Position = UDim2.new(0, 0, 0, 40),
-        BackgroundColor3 = Color3.fromRGB(30, 30, 30),
-        Parent = self._Main,
-    })
+--========== SECTIONS ==========--
 
-    Create("UICorner", { CornerRadius = UDim.new(0, 10), Parent = tabBar })
+function Window:AddSection(tab, name)
+	local Section = Create("Frame", {
+		Size = UDim2.new(1, -10, 0, 40),
+		BackgroundColor3 = Color3.fromRGB(40, 40, 40),
+		Parent = tab.Frame
+	})
+	Create("UICorner", {CornerRadius = UDim.new(0, 6), Parent = Section})
 
-    function tabBar:Refresh(tabs)
-        for _, child in ipairs(self:GetChildren()) do
-            if child:IsA("GuiObject") then
-                child:Destroy()
-            end
-        end
+	local Title = Create("TextLabel", {
+		Text = name,
+		Font = Enum.Font.SourceSansBold,
+		TextColor3 = Color3.new(1, 1, 1),
+		BackgroundTransparency = 1,
+		TextSize = 20,
+		Size = UDim2.new(1, -10, 0, 40),
+		Position = UDim2.new(0, 10, 0, 0),
+		Parent = Section
+	})
 
-        for i, tab in ipairs(tabs) do
-            local btn = Create("TextButton", {
-                Name = tab.Name,
-                Text = tab.Name,
-                Size = UDim2.new(1/#tabs, 0, 1, 0),
-                BackgroundColor3 = Color3.fromRGB(50, 50, 50),
-                TextColor3 = Color3.new(1, 1, 1),
-                Font = Enum.Font.SourceSans,
-                TextSize = 18,
-                Parent = self,
-            })
+	local List = Create("UIListLayout", {
+		Parent = Section,
+		Padding = UDim.new(0, 6),
+		SortOrder = Enum.SortOrder.LayoutOrder
+	})
 
-            Create("UICorner", { CornerRadius = UDim.new(0, 5), Parent = btn })
-            applyHoverAnimation(btn)
-
-            btn.MouseButton1Click:Connect(function()
-                for _, otherTab in ipairs(tabs) do
-                    otherTab._container.Visible = false
-                end
-                tab._container.Visible = true
-            end)
-        end
-    end
-
-    return tabBar
+	tab.Sections[name] = Section
+	return Section
 end
 
--- Toggle the entire UI's visibility
-function Window:ToggleUI()
-    self._Main.Enabled = not self._Main.Enabled
+--========== ELEMENTS ==========--
+
+local Elements = {}
+
+--========================--
+-- 🔘 TOGGLE FIXED
+--========================--
+function Elements:Toggle(section, text, callback)
+	local Btn = Create("TextButton", {
+		Size = UDim2.new(1, -20, 0, 32),
+		BackgroundColor3 = Color3.fromRGB(50, 50, 50),
+		Text = text .. "  [OFF]",
+		TextSize = 18,
+		TextColor3 = Color3.new(1,1,1),
+		Font = Enum.Font.SourceSans,
+		Parent = section
+	})
+	Create("UICorner", {CornerRadius = UDim.new(0, 5), Parent = Btn})
+	applyHoverAnimation(Btn)
+
+	local state = false
+
+	Btn.MouseButton1Click:Connect(function()
+		state = not state
+		Btn.Text = text .. (state and "  [ON]" or "  [OFF]")
+		if callback then callback(state) end
+	end)
+
+	return Btn
 end
 
--- Change the theme for all UI elements
-function Window:ChangeTheme(newTheme)
-    newTheme = newTheme or {
-        Main = Color3.fromRGB(30, 30, 30),
-        TabBar = Color3.fromRGB(30, 30, 30),
-        Button = Color3.fromRGB(50, 50, 50),
-        Text = Color3.new(1, 1, 1)
-    }
+--========================--
+-- 🎚 SLIDER FIXED
+--========================--
+function Elements:Slider(section, text, min, max, default, callback)
+	local holder = Create("Frame", {
+		Size = UDim2.new(1, -20, 0, 55),
+		BackgroundColor3 = Color3.fromRGB(50, 50, 50),
+		Parent = section
+	})
+	Create("UICorner", {CornerRadius = UDim.new(0, 5), Parent = holder})
 
-    self._Main.BackgroundColor3 = newTheme.Main
+	local title = Create("TextLabel", {
+		Text = text .. ": " .. default,
+		Font = Enum.Font.SourceSansBold,
+		TextColor3 = Color3.new(1,1,1),
+		BackgroundTransparency = 1,
+		TextSize = 18,
+		Parent = holder,
+		Size = UDim2.new(1,0,0,25)
+	})
 
-    if self._tabBar then
-        self._tabBar.BackgroundColor3 = newTheme.TabBar
-        for _, child in ipairs(self._tabBar:GetChildren()) do
-            if child:IsA("TextButton") then
-                child.BackgroundColor3 = newTheme.Button
-                child.TextColor3 = newTheme.Text
-            end
-        end
-    end
+	local bar = Create("Frame", {
+		Size = UDim2.new(1, -20, 0, 10),
+		Position = UDim2.new(0,10,0,30),
+		BackgroundColor3 = Color3.fromRGB(70,70,70),
+		Parent = holder
+	})
+	Create("UICorner", {CornerRadius = UDim.new(0, 4), Parent = bar})
 
-    for _, tab in ipairs(self.Tabs) do
-        tab._container.BackgroundColor3 = newTheme.Main
-        for _, section in ipairs(tab.Sections) do
-            if section.Frame then
-                section.Frame.BackgroundColor3 = newTheme.Button
-                for _, obj in ipairs(section.Frame:GetChildren()) do
-                    if obj:IsA("TextLabel") then
-                        obj.TextColor3 = newTheme.Text
-                    elseif obj:IsA("TextButton") then
-                        obj.BackgroundColor3 = newTheme.Button
-                        obj.TextColor3 = newTheme.Text
-                    end
-                end
-            end
-        end
-    end
+	local fill = Create("Frame", {
+		Size = UDim2.new((default-min)/(max-min), 0, 1, 0),
+		BackgroundColor3 = Color3.new(0,1,0),
+		Parent = bar
+	})
+	Create("UICorner", {CornerRadius = UDim.new(0, 4), Parent = fill})
+
+	local dragging = false
+
+	bar.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+	end)
+
+	bar.InputChanged:Connect(function(input)
+		if dragging then
+			local pos = math.clamp((input.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0,1)
+			fill.Size = UDim2.new(pos,0,1,0)
+			local val = math.floor(min + (max-min)*pos)
+			title.Text = text .. ": " .. val
+			if callback then callback(val) end
+		end
+	end)
+
+	return holder
 end
 
--- Save current config
-function Window:SaveConfig(configName)
-    local config = {}
-    for _, tab in ipairs(self.Tabs) do
-        for _, section in ipairs(tab.Sections) do
-            for _, element in ipairs(section.Elements) do
-                local configType = element:GetAttribute("_configType")
-                local configValue = element:GetAttribute("_configValue")
-                if configType and configValue then
-                    config[tab.Name] = config[tab.Name] or {}
-                    config[tab.Name][section.Frame.Name] = config[tab.Name][section.Frame.Name] or {}
-                    config[tab.Name][section.Frame.Name][configType] = configValue
-                end
-            end
-        end
-    end
-    SokaHubUI.Configs[configName] = config
+--========================--
+-- ⌨ KEYBIND FIXED
+--========================--
+function Elements:Keybind(section, text, default, callback)
+	local Btn = Create("TextButton", {
+		Size = UDim2.new(1, -20, 0, 32),
+		BackgroundColor3 = Color3.fromRGB(50,50,50),
+		Text = text .. " [" .. (default or "None") .. "]",
+		TextColor3 = Color3.new(1,1,1),
+		TextSize = 18,
+		Font = Enum.Font.SourceSans,
+		Parent = section
+	})
+	Create("UICorner", {CornerRadius = UDim.new(0,5), Parent = Btn})
+	applyHoverAnimation(Btn)
+
+	local waiting = false
+	local key = default
+
+	Btn.MouseButton1Click:Connect(function()
+		Btn.Text = text .. " [Press Key]"
+		waiting = true
+	end)
+
+	UserInputService.InputBegan:Connect(function(input)
+		if waiting and input.UserInputType == Enum.UserInputType.Keyboard then
+			waiting = false
+			key = input.KeyCode.Name
+			Btn.Text = text .. " [" .. key .. "]"
+			if callback then callback(key) end
+		end
+	end)
+
+	return Btn
 end
 
--- Load a saved configuration
-function Window:LoadConfig(configName)
-    local config = SokaHubUI.Configs[configName]
-    if not config then return end
+--========================--
+-- 🟦 DROPDOWN FIXED
+--========================--
+function Elements:Dropdown(section, text, list, callback)
+	local Btn = Create("TextButton", {
+		Size = UDim2.new(1, -20, 0, 32),
+		BackgroundColor3 = Color3.fromRGB(50,50,50),
+		Text = text .. " ▼",
+		TextColor3 = Color3.new(1,1,1),
+		TextSize = 18,
+		Font = Enum.Font.SourceSans,
+		Parent = section
+	})
+	Create("UICorner", {CornerRadius = UDim.new(0,5), Parent = Btn})
+	applyHoverAnimation(Btn)
 
-    for tabName, sections in pairs(config) do
-        for sectionName, values in pairs(sections) do
-            for configType, value in pairs(values) do
-                for _, tab in ipairs(self.Tabs) do
-                    if tab.Name == tabName then
-                        for _, section in ipairs(tab.Sections) do
-                            if section.Frame.Name == sectionName then
-                                local element = section.Elements[1]
-                                if element and element:GetAttribute("_configType") == configType then
-                                    element:SetAttribute("_configValue", value)
-                                    if configType == "toggle" then
-                                        element.Text = tabName .. "   [" .. (value and "ON" or "OFF") .. "]"
-                                    elseif configType == "slider" then
-                                        local title = element:FindFirstChildOfClass("TextLabel")
-                                        title.Text = title.Text:match("^(.*) %((%d+)%)$"):format(title.Text:match("^(.*) %((%d+)%$"), value)
-                                    elseif configType == "keybind" then
-                                        local label = element:FindFirstChildOfClass("TextLabel")
-                                        label.Text = tabName .. " [" .. value .. "]"
-                                    elseif configType == "colorPicker" then
-                                        local colorBox = element:FindFirstChildOfClass("TextButton")
-                                        colorBox.BackgroundColor3 = HexToColor3(value)
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
+	local DropFrame = Create("Frame", {
+		Size = UDim2.new(1,-20,0,#list*28+10),
+		BackgroundColor3 = Color3.fromRGB(45,45,45),
+		Visible = false,
+		Parent = section
+	})
+	Create("UICorner", {CornerRadius = UDim.new(0,5), Parent = DropFrame})
+
+	local layout = Create("UIListLayout", {
+		Parent = DropFrame,
+		Padding = UDim.new(0,3),
+		SortOrder = Enum.SortOrder.LayoutOrder
+	})
+
+	for _, item in ipairs(list) do
+		local opt = Create("TextButton", {
+			Text = item,
+			Size = UDim2.new(1,0,0,28),
+			BackgroundColor3 = Color3.fromRGB(60,60,60),
+			TextColor3 = Color3.new(1,1,1),
+			Font = Enum.Font.SourceSans,
+			TextSize = 16,
+			Parent = DropFrame
+		})
+		Create("UICorner", {CornerRadius = UDim.new(0,5), Parent = opt})
+		applyHoverAnimation(opt)
+
+		opt.MouseButton1Click:Connect(function()
+			Btn.Text = text .. ": " .. item
+			DropFrame.Visible = false
+			if callback then callback(item) end
+		end)
+	end
+
+	Btn.MouseButton1Click:Connect(function()
+		DropFrame.Visible = not DropFrame.Visible
+	end)
+
+	return Btn
 end
 
--- Initialize the main UI window
-function SokaHubUI:Init()
-    self._Main = Create("ScreenGui", {
-        Name = "SokaHubUI",
-        ResetOnSpawn = false,
-        Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui"),
-    })
+--========================--
+-- 🎨 COLOR PICKER FIXED
+--========================--
+function Elements:ColorPicker(section, text, defaultColor, callback)
+	local Btn = Create("TextButton", {
+		Size = UDim2.new(1, -20, 0, 32),
+		BackgroundColor3 = Color3.fromRGB(50,50,50),
+		Text = text,
+		TextColor3 = Color3.new(1,1,1),
+		TextSize = 18,
+		Font = Enum.Font.SourceSans,
+		Parent = section
+	})
 
-    self.Tabs = {}
-    self._tabBar = self:CreateTabBar()
-    self._tabBar.Parent = self._Main
+	Create("UICorner", {CornerRadius = UDim.new(0,5), Parent = Btn})
+	applyHoverAnimation(Btn)
 
-    self._content = Create("Frame", {
-        Size = UDim2.new(1, 0, 1, -40),
-        Position = UDim2.new(0, 0, 0, 40),
-        BackgroundColor3 = Color3.fromRGB(30, 30, 30),
-        Parent = self._Main,
-    })
+	local ColorBox = Create("Frame",{
+		Size = UDim2.new(0,30,0,30),
+		Position = UDim2.new(1,-40,0,1),
+		BackgroundColor3 = defaultColor or Color3.new(1,0,0),
+		Parent = Btn
+	})
+	Create("UICorner",{CornerRadius = UDim.new(0,5),Parent=ColorBox})
 
-    Create("UICorner", { CornerRadius = UDim.new(0, 10), Parent = self._content })
+	Btn.MouseButton1Click:Connect(function()
+		local picker = Instance.new("Color3Value")
+		picker.Value = ColorBox.BackgroundColor3
+		picker.Changed:Connect(function()
+			ColorBox.BackgroundColor3 = picker.Value
+			if callback then callback(picker.Value) end
+		end)
+
+		-- Open Roblox color picker dialog
+		picker.Value = Color3.new(1,0,0)
+	end)
+
+	return Btn
 end
+
+-- Bind elements to tab object
+Window.NewToggle = Elements.Toggle
+Window.NewSlider = Elements.Slider
+Window.NewKeybind = Elements.Keybind
+Window.NewDropdown = Elements.Dropdown
+Window.NewColorPicker = Elements.ColorPicker
 
 return SokaHubUI
